@@ -1,0 +1,118 @@
+export type Role = "admin" | "staff";
+export type Member = {
+  id: string;
+  name: string;
+  role: Role;
+  active: boolean;
+  hourly_rate: number;
+  color: string;
+  avatar_url?: string;
+};
+export type Product = {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  variant: string;
+  price: number;
+  stock: number;
+  active: boolean;
+  color: string;
+  kind: string;
+  cost?: number;
+  image_url?: string;
+};
+export type Line = {
+  product_id: string;
+  name: string;
+  variant: string;
+  price: number;
+  quantity: number;
+};
+export type Order = {
+  id: string;
+  number: string;
+  user_id: string;
+  shift_id: string;
+  created_at: string;
+  total: number;
+  cash: number;
+  transfer: number;
+  status: "completed" | "cancelled";
+  lines: Line[];
+  reason?: string;
+  sync?: "pending" | "attention";
+  error?: string;
+  cost_total?: number;
+};
+export type Shift = {
+  id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  opening_cash: number;
+  actual_cash: number | null;
+  expected_cash: number | null;
+  note: string;
+  status: "open" | "submitted" | "approved";
+};
+export type Expense = {
+  id: string;
+  amount: number;
+  category: string;
+  note: string;
+  created_at: string;
+};
+export type Movement = {
+  id: string;
+  product_id: string;
+  quantity: number;
+  reason: string;
+  created_at: string;
+};
+export type Audit = {
+  id: string;
+  action: string;
+  actor_id: string;
+  created_at: string;
+  detail: string;
+};
+export type Settings = {
+  name: string;
+  address: string;
+  phone: string;
+  receipt_footer: string;
+  idle_minutes: number;
+  allow_staff_cancel: boolean;
+  theme: "dark" | "light";
+  bonus_percent: number;
+};
+export type Snapshot = {
+  shop_id: string;
+  user: Member;
+  members: Member[];
+  products: Product[];
+  orders: Order[];
+  shifts: Shift[];
+  expenses: Expense[];
+  movements: Movement[];
+  audit: Audit[];
+  settings: Settings;
+  pay_rules?: PayRule[];
+  payroll_periods?: PayrollPeriod[];
+  devices?: Device[];
+};
+export type PayRule={id:string;user_id:string;effective_at:string;hourly_rate:number;bonus_percent:number};
+export type PayrollLine={user_id:string;name:string;minutes:number;base:number;sales:number;bonus:number;adjustment:number;note:string;total:number};
+export type PayrollPeriod={id:string;start_date:string;end_date:string;status:'approved'|'paid';approved_at:string;paid_at:string|null;lines:PayrollLine[]};
+export type Device={id:string;label:string;expires_at:string;revoked_at:string|null};
+export type Command = { type: string; payload: Record<string, unknown> };
+export type Checkout = {
+  id: string;
+  shift_id: string;
+  lines: { product_id: string; quantity: number; price: number }[];
+  cash: number;
+  transfer: number;
+  occurred_at: string;
+  offline: boolean;
+};
