@@ -24,28 +24,27 @@ Inside Out Manager is an operations tool designed for precision, speed, and abso
 We optimize for high contrast and legibility, defaulting to Dark Mode for the terminal feel.
 
 ### Color Palette (Dark Theme - Terminal Focus)
-- `--bg`: `#050505` (Deepest black for the absolute background)
-- `--surface`: `#111111` (Elevated panels)
-- `--raised`: `#1A1A1A` (Hover states, input backgrounds)
-- `--border`: `#2A2A2A` (Crisp separation)
-- `--text`: `#F0F0F0` (High contrast text)
-- `--muted`: `#888888` (De-emphasized text)
-- `--accent`: `#2563EB` (A strong, pure, electric blue for primary actions)
-- `--accent-soft`: `#2563EB1A` (For active nav items and highlights)
-- `--success`: `#10B981` (Solid emerald for positive numbers)
-- `--danger`: `#EF4444` (Solid red for errors/negatives)
-- `--warning`: `#F59E0B` (Solid amber)
-- `--sidebar`: `#090909` (Distinctive control column)
+- `--bg`: `#0A0806` (Warm near-black — avoids "AI gray")
+- `--surface`: `#130F0D` (Elevated panels)
+- `--raised`: `#1E1814` (Hover states, input backgrounds)
+- `--border`: `#2C2420` (Crisp separation)
+- `--border-soft`: `#1E1814`
+- `--text`: `#F5F0EA` (High contrast warm text)
+- `--muted`: `#7A6E68` (De-emphasized text)
+- `--accent`: `#C0392B` (A strong, pure, inside out red for primary actions)
+- `--accent-soft`: `rgba(192,57,43,0.12)` (For active nav items and highlights)
+- `--sidebar`: `#080603` (Distinctive control column)
 
 ### Color Palette (Light Theme)
-- `--bg`: `#F8F9FA`
-- `--surface`: `#FFFFFF`
-- `--raised`: `#F1F3F5`
-- `--border`: `#E5E7EB`
-- `--text`: `#111827`
-- `--muted`: `#6B7280`
-- `--accent`: `#1D4ED8`
-- `--sidebar`: `#F3F4F6`
+- `--bg`: `#F9F6F0` (Warm cream)
+- `--surface`: `#FDFAF5` (Warmer white)
+- `--raised`: `#F0EBE3`
+- `--border`: `#DDD5CB`
+- `--border-soft`: `#EDE6DD`
+- `--text`: `#1A1410`
+- `--muted`: `#7A6E65`
+- `--accent`: `#B5341F`
+- `--sidebar`: `#1A1410` (Dark sidebar in light mode for strong contrast)
 
 ### Spacing & Sizing
 - Grid Gap / Spacing Base: `4px` / `8px`
