@@ -3,7 +3,7 @@
 begin;
 do $$
 declare
- admin_id uuid := 'REPLACE_WITH_AUTH_USER_UUID';
+ admin_id uuid := 'bfbe8b62-3c30-4292-9341-d9d7948ccaa9';
  shop uuid;
 begin
  if not exists(select 1 from auth.users where id=admin_id) then raise exception 'Create the admin in Supabase Auth first'; end if;

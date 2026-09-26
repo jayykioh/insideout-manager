@@ -9,7 +9,9 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import Image from "next/image";
+import { IconButton, Empty, Field, Modal, ProductArt } from "@/components/ui";
+import { Stat, ShiftTable } from "@/components/shared/stat-shift";
+import { ProductFields } from "@/components/shared/product-fields";
 const OperationsPanel = dynamic(() => import("./operations-panel"), {
   loading: () => <div className="skeleton" aria-label="Đang tải" />,
 });
@@ -41,6 +43,7 @@ import {
   Sun,
   Moon,
   Trash2,
+  UserCircle,
   Users,
   Wallet,
   X,
@@ -79,23 +82,18 @@ const navigation = [
   { href: "/pos", label: "Bán hàng", icon: ShoppingBag },
   { href: "/orders", label: "Đơn hàng", icon: History },
   { href: "/shift", label: "Ca làm việc", icon: Clock },
-  { href: "/reports", label: "Tổng quan", icon: LayoutDashboard, admin: true },
-  { href: "/admin/products", label: "Sản phẩm", icon: Package, admin: true },
-  { href: "/admin/staff", label: "Nhân sự", icon: Users, admin: true },
-  { href: "/finance", label: "Thu chi", icon: Wallet, admin: true },
-  {
-    href: "/admin/settings",
-    label: "Cài đặt",
-    icon: SettingsIcon,
-    admin: true,
-  },
+  { href: "/reports", label: "Báo cáo", icon: LayoutDashboard, admin: true },
+  { href: "/admin/products", label: "Quản lý", icon: SettingsIcon, admin: true },
 ];
-navigation.splice(
-  6,
-  0,
-  { href: "/admin/payroll", label: "Bảng lương", icon: Wallet, admin: true },
-  { href: "/admin/attendance", label: "Chấm công", icon: Clock, admin: true },
-);
+
+const adminTabs = [
+  { href: "/admin/products", label: "Sản phẩm" },
+  { href: "/admin/staff", label: "Nhân sự" },
+  { href: "/admin/payroll", label: "Bảng lương" },
+  { href: "/admin/attendance", label: "Chấm công" },
+  { href: "/finance", label: "Thu chi" },
+  { href: "/admin/settings", label: "Cài đặt" },
+];
 const titles: Record<string, [string, string]> = {
   "/admin/payroll": [
     "Bảng lương",
@@ -115,200 +113,8 @@ const titles: Record<string, [string, string]> = {
   "/admin/staff": ["Nhân sự", "Cùng nhau làm nên một ngày tốt hơn."],
   "/finance": ["Thu chi", "Rõ ràng trong từng khoản thu, chi."],
   "/admin/settings": ["Cài đặt", "Một không gian làm việc theo cách của bạn."],
+  "/profile": ["Tài khoản", "Thông tin hồ sơ và bảo mật của bạn."],
 };
-function IconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="icon-button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-function Empty({
-  title,
-  detail,
-  action,
-}: {
-  title: string;
-  detail: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="empty">
-      <ShoppingBag size={30} strokeWidth={1.3} />
-      <h3>{title}</h3>
-      <p>{detail}</p>
-      {action}
-    </div>
-  );
-}
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
-function Modal({
-  title,
-  children,
-  close,
-}: {
-  title: string;
-  children: ReactNode;
-  close: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    el?.showModal();
-    return () => el?.close();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      aria-label={title}
-      onCancel={close}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-      className="modal"
-    >
-      <div className="modal-header">
-        <h2>{title}</h2>
-        <IconButton label="Đóng" onClick={close}>
-          <X size={20} />
-        </IconButton>
-      </div>
-      {children}
-    </dialog>
-  );
-}
-function ProductArt({
-  product,
-  small = false,
-}: {
-  product: Product;
-  small?: boolean;
-}) {
-  if (product.image_url)
-    return (
-      <div className={"product-art " + (small ? "small" : "")}>
-        <Image
-          src={product.image_url}
-          alt={product.name}
-          width={small ? 50 : 400}
-          height={small ? 55 : 400}
-          unoptimized
-          sizes={small ? "50px" : "(max-width:700px) 45vw, 240px"}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
-      </div>
-    );
-  return (
-    <div
-      className={"product-art " + (small ? "small" : "")}
-      style={{ "--garment": product.color } as React.CSSProperties}
-    >
-      <svg viewBox="0 0 220 200" aria-hidden="true">
-        <ellipse cx="110" cy="178" rx="58" ry="7" fill="black" opacity=".09" />
-        {product.kind === "pants" ? (
-          <g fill="var(--garment)" stroke="#000" strokeOpacity=".15">
-            <path d="M72 29h76l8 143-39 1-8-92-9 92-39-1z" />
-            <path
-              d="M73 51h73M109 33v48M66 96h29v30H64M124 96h28v30h-26"
-              fill="none"
-            />
-          </g>
-        ) : product.kind === "bag" ? (
-          <g stroke="#000" strokeOpacity=".2">
-            <path
-              d="M85 61V44c0-34 50-34 50 0v17"
-              fill="none"
-              stroke="var(--garment)"
-              strokeWidth="12"
-            />
-            <path d="M61 59h98l11 112H50z" fill="var(--garment)" />
-            <text
-              x="110"
-              y="121"
-              textAnchor="middle"
-              fill="#484740"
-              fontSize="10"
-              fontWeight="700"
-              stroke="none"
-            >
-              inside out.
-            </text>
-          </g>
-        ) : product.kind === "cap" ? (
-          <g fill="var(--garment)">
-            <path d="M56 123c0-97 108-97 108 0z" />
-            <path d="M53 117c-5 15 37 46 102 29 41-12 18-31-10-28z" />
-            <path
-              d="M108 53v59M74 116c0-37 13-63 34-63"
-              stroke="#fff"
-              strokeOpacity=".1"
-              fill="none"
-            />
-            <text x="110" y="104" textAnchor="middle" fill="#ddd" fontSize="11">
-              io.
-            </text>
-          </g>
-        ) : (
-          <g fill="var(--garment)" stroke="#000" strokeOpacity=".13">
-            <path
-              d={
-                product.kind === "hoodie"
-                  ? "M82 49Q79 13 110 13Q141 13 138 49L160 55 192 141 164 154 144 99 148 174H72L76 99 56 154 28 141 60 55Z"
-                  : "M82 40Q110 58 138 40L168 52 194 91 162 110 145 87 148 172H72L75 87 58 110 26 91 52 52Z"
-              }
-            />
-            <path
-              d={
-                product.kind === "hoodie"
-                  ? "M88 45Q110 69 132 45M85 136h50l8 22H77z"
-                  : "M85 44Q110 75 135 44"
-              }
-              fill="none"
-              strokeWidth="3"
-            />
-            <path
-              d="M78 97l4 63M140 97l-4 63"
-              stroke="#fff"
-              strokeOpacity=".08"
-            />
-            <text
-              x="110"
-              y="99"
-              textAnchor="middle"
-              fill={product.color === "#303333" ? "#c1c1b8" : "#55564e"}
-              fontSize="7"
-              fontWeight="600"
-              stroke="none"
-            >
-              inside out.
-            </text>
-          </g>
-        )}
-      </svg>
-    </div>
-  );
-}
 
 export default function Manager() {
   const path = usePathname();
@@ -340,6 +146,12 @@ export default function Manager() {
   >(null);
   const [editing, setEditing] = useState<Product | Member | null>(null);
   const [mobileCart, setMobileCart] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string;
+    message: string;
+    actionLabel: string;
+    action: () => void;
+  } | null>(null);
 
   const [, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -673,19 +485,17 @@ export default function Manager() {
         <IconButton
           label="Xóa giỏ hàng"
           onClick={() => {
-            if (!itemCount || confirm("Xóa toàn bộ sản phẩm trong giỏ?"))
-              setCart({});
+            if (!itemCount) return;
+            setDialog({
+              title: "Xóa giỏ hàng",
+              message: "Bạn có chắc chắn muốn xóa toàn bộ sản phẩm trong giỏ hàng?",
+              actionLabel: "Xóa",
+              action: () => setCart({})
+            });
           }}
         >
           <Trash2 size={17} />
         </IconButton>
-      </div>
-      <div className="cart-context">
-        <span>
-          <span className="status-dot" />{" "}
-          {current ? "Ca đang mở" : "Chưa bắt đầu ca"}
-        </span>
-        <span>{data.user.name.split(" ").at(-1)}</span>
       </div>
       <div className="cart-lines">
         {lines.length ? (
@@ -767,7 +577,6 @@ export default function Manager() {
         <Link className="brand" href="/pos">
           <div className="brand-symbol">InsideOut</div>
           <div>
-            <strong>TERMINAL</strong>
             <span>v1.0.0</span>
           </div>
         </Link>
@@ -788,13 +597,23 @@ export default function Manager() {
                 key={n.href}
                 aria-label={n.label}
                 href={n.href}
-                className={path === n.href ? "active" : ""}
+                className={
+                  (n.href === "/admin/products"
+                    ? path.startsWith("/admin") || path === "/finance"
+                    : path === n.href)
+                    ? "active"
+                    : ""
+                }
               >
                 <n.icon size={19} strokeWidth={1.6} />
                 <span>{n.label}</span>
                 {path === n.href && <span className="nav-active-dot" />}
               </Link>
             ))}
+          <button className="mobile-logout" onClick={() => router.push("/profile")}>
+            <UserCircle size={19} strokeWidth={1.6} />
+            <span>Tài khoản</span>
+          </button>
         </nav>
         <div className="sidebar-footer">
           <div className="system-status">
@@ -802,35 +621,21 @@ export default function Manager() {
             {online ? "Hệ thống sẵn sàng" : "Đang ngoại tuyến"}
             <span className="version">v0.1</span>
           </div>
-          <button className="user-card" onClick={switchProfile}>
+          <button className="user-card" onClick={() => router.push("/profile")}>
             <span className="avatar" style={{ background: data.user.color }}>
               {data.user.name.split(" ").at(-1)?.[0]}
             </span>
             <span>
               <strong>{data.user.name}</strong>
-              <small>{admin ? "Quản lý cửa hàng" : "Nhân viên"}</small>
+              <small>Quản lý tài khoản</small>
             </span>
-            <LogOut size={16} />
+            <UserCircle size={18} />
           </button>
         </div>
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <div className="breadcrumb">
-            <span className="eyebrow" style={{ fontFamily: "monospace" }}>SYS/WORKSPACE</span>
-            <span className="heading-dot" />
-            <span className="eyebrow" style={{ fontFamily: "monospace" }}>
-              {String(title[0] || "Unknown").toUpperCase()}
-            </span>
-          </div>
           <div className="top-actions">
-            <span className="today-label">
-              {new Intl.DateTimeFormat("vi-VN", {
-                weekday: "short",
-                day: "numeric",
-                month: "long",
-              }).format(new Date())}
-            </span>
             <button className="sync-button" onClick={() => setModal("queue")}>
               {online ? <CloudCheck size={16} /> : <CloudOff size={16} />}
               <span>
@@ -846,13 +651,25 @@ export default function Manager() {
             </IconButton>
           </div>
         </header>
+        {(path.startsWith("/admin") || path === "/finance") && admin && (
+          <div className="admin-tabs">
+            {adminTabs.map((t) => (
+              <Link
+                key={t.href}
+                href={t.href}
+                className={path === t.href ? "active" : ""}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </div>
+        )}
         <main id="main" className={path === "/pos" ? "main pos-main" : "main"}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">INSIDE OUT MANAGER</div>
               <h1>
                 {title[0]}
-                <span className="heading-dot">.</span>
               </h1>
               <p>{title[1]}</p>
             </div>
@@ -1037,7 +854,6 @@ export default function Manager() {
                       />
                     )}
                     <div className="catalog-footer">
-                      <span>Được tạo cho những ngày làm việc tốt hơn.</span>
                       <span>inside out © {new Date().getFullYear()}</span>
                     </div>
                   </section>
@@ -1104,7 +920,6 @@ export default function Manager() {
                             <th>Thanh toán</th>
                             <th>Trạng thái</th>
                             <th className="right">Tổng cộng</th>
-                            <th />
                           </tr>
                         </thead>
                         <tbody>
@@ -1152,14 +967,6 @@ export default function Manager() {
                                 </td>
                                 <td className="right money">
                                   {money(o.total)}
-                                </td>
-                                <td>
-                                  <IconButton
-                                    label={"Xem " + o.number}
-                                    onClick={() => setReceipt(o)}
-                                  >
-                                    <ChevronRight size={17} />
-                                  </IconButton>
                                 </td>
                               </tr>
                             ))}
@@ -1316,28 +1123,24 @@ export default function Manager() {
                                   >
                                     Điều chỉnh kho
                                   </button>
-                                  <IconButton
-                                    label={
-                                      p.active
-                                        ? "Lưu trữ sản phẩm"
-                                        : "Khôi phục sản phẩm"
-                                    }
+                                  <button
+                                    className="text-button"
                                     onClick={() => {
-                                      if (
-                                        confirm(
-                                          p.active
-                                            ? "Lưu trữ sản phẩm này?"
-                                            : "Khôi phục sản phẩm này?",
-                                        )
-                                      )
-                                        mutate({
+                                      setDialog({
+                                        title: p.active ? "Lưu trữ sản phẩm" : "Khôi phục sản phẩm",
+                                        message: p.active 
+                                          ? `Bạn có chắc chắn muốn lưu trữ sản phẩm ${p.name}?` 
+                                          : `Bạn có chắc chắn muốn khôi phục sản phẩm ${p.name}?`,
+                                        actionLabel: p.active ? "Lưu trữ" : "Khôi phục",
+                                        action: () => mutate({
                                           type: "product",
                                           payload: { ...p, active: !p.active },
-                                        });
+                                        })
+                                      });
                                     }}
                                   >
-                                    <Package size={15} />
-                                  </IconButton>
+                                    {p.active ? "Lưu trữ" : "Khôi phục"}
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1504,7 +1307,39 @@ export default function Manager() {
                   busy={busy}
                   onSave={(payload) => mutate({ type: "settings", payload })}
                 />
-              )}{" "}
+              )}
+              {path === "/profile" && (
+                <section className="panel" style={{ maxWidth: 500, margin: "0 auto", textAlign: "center", padding: "40px 20px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+                    <span className="avatar" style={{ background: data.user.color, width: 80, height: 80, fontSize: 32, margin: "0 auto" }}>
+                      {data.user.name.split(" ").at(-1)?.[0]}
+                    </span>
+                    <h2 style={{ margin: 0 }}>{data.user.name}</h2>
+                    <span className="badge">{admin ? "Quản lý" : "Nhân viên"}</span>
+                  </div>
+                  
+                  <div className="form-grid" style={{ marginTop: 40, textAlign: "left", gridTemplateColumns: "1fr" }}>
+                    <Field label="Tên hiển thị">
+                      <input defaultValue={data.user.name} readOnly disabled />
+                    </Field>
+                    <Field label="Mã số nhân viên">
+                      <input defaultValue={data.user.id.split("-")[0]} readOnly disabled />
+                    </Field>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "40px", flexWrap: "wrap" }}>
+                    <button className="secondary" style={{ flex: 1 }} onClick={() => {
+                      if (admin) router.push("/admin/settings");
+                      else setNotice("Vui lòng liên hệ Quản lý để thay đổi mã PIN.");
+                    }}>
+                      Đổi mã PIN
+                    </button>
+                    <button className="primary" style={{ flex: 1, background: "var(--danger)", color: "white", borderColor: "var(--danger)" }} onClick={switchProfile}>
+                      <LogOut size={16} style={{ marginRight: 6 }} /> Khóa ca
+                    </button>
+                  </div>
+                </section>
+              )}
               {!titles[path] && (
                 <Empty
                   title="Trang không tồn tại"
@@ -1860,178 +1695,27 @@ export default function Manager() {
           )}
         </Modal>
       )}
+      {dialog && (
+        <Modal title={dialog.title} close={() => setDialog(null)}>
+          <p style={{ marginTop: 0 }}>{dialog.message}</p>
+          <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
+            <button className="secondary" style={{ flex: 1 }} onClick={() => setDialog(null)}>
+              Hủy
+            </button>
+            <button className="primary" style={{ flex: 1, background: "var(--danger)", borderColor: "var(--danger)", color: "white" }} onClick={() => {
+              dialog.action();
+              setDialog(null);
+            }}>
+              {dialog.actionLabel}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
-function Stat({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <section className="panel stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </section>
-  );
-}
-function ShiftTable({
-  data,
-  onApprove,
-}: {
-  data: Snapshot;
-  onApprove: (id: string) => void;
-}) {
-  return (
-    <section className="panel">
-      <div className="section-toolbar">
-        <h2>Đối soát ca làm</h2>
-      </div>
-      {!data.shifts.length ? (
-        <Empty
-          title="Chưa có ca làm"
-          detail="Ca làm sẽ xuất hiện sau khi chấm công vào."
-        />
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nhân viên</th>
-                <th>Bắt đầu</th>
-                <th>Kết thúc</th>
-                <th>Dự kiến</th>
-                <th>Thực tế</th>
-                <th>Chênh lệch</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.shifts.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    {data.members.find((m) => m.id === s.user_id)?.name ||
-                      "Bạn"}
-                  </td>
-                  <td>{date(s.started_at)}</td>
-                  <td>{s.ended_at ? date(s.ended_at) : "Đang làm"}</td>
-                  <td className="money">
-                    {money(s.expected_cash ?? expectedCash(s, data.orders))}
-                  </td>
-                  <td className="money">
-                    {s.actual_cash === null ? "—" : money(s.actual_cash)}
-                  </td>
-                  <td className="money">
-                    {s.actual_cash === null
-                      ? "—"
-                      : money(s.actual_cash - (s.expected_cash || 0))}
-                  </td>
-                  <td>
-                    {s.status === "submitted" && data.user.role === "admin" ? (
-                      <button
-                        className="secondary"
-                        onClick={() => onApprove(s.id)}
-                      >
-                        Duyệt ca
-                      </button>
-                    ) : (
-                      <span className="badge">
-                        {s.status === "open"
-                          ? "Đang mở"
-                          : s.status === "approved"
-                            ? "Đã duyệt"
-                            : "Chờ duyệt"}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-function ProductFields({ product: p }: { product: Product | null }) {
-  return (
-    <>
-      <Field label="Tên sản phẩm">
-        <input name="name" required maxLength={120} defaultValue={p?.name} />
-      </Field>
-      <div className="form-grid">
-        <Field label="SKU">
-          <input name="sku" required defaultValue={p?.sku} />
-        </Field>
-        <Field label="Danh mục">
-          <select name="category" defaultValue={p?.category || "Áo thun"}>
-            {["Áo thun", "Hoodie", "Quần", "Phụ kiện"].map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field label="Biến thể">
-        <input
-          name="variant"
-          required
-          placeholder="Đen / M"
-          defaultValue={p?.variant}
-        />
-      </Field>
-      <div className="form-grid">
-        <Field label="Giá bán (₫)">
-          <input
-            name="price"
-            type="number"
-            min="0"
-            required
-            defaultValue={p?.price}
-          />
-        </Field>
-        <Field label="Giá vốn (₫)">
-          <input
-            name="cost"
-            type="number"
-            min="0"
-            required
-            defaultValue={p?.cost}
-          />
-        </Field>
-        <Field label={p ? "Tồn kho (điều chỉnh riêng)" : "Tồn kho ban đầu"}>
-          <input
-            name="stock"
-            type="number"
-            min="0"
-            readOnly={!!p}
-            defaultValue={p?.stock || 0}
-          />
-        </Field>
-        <Field label="Màu sản phẩm">
-          <input
-            name="color"
-            type="color"
-            defaultValue={p?.color || "#676b63"}
-          />
-        </Field>
-      </div>
-      <Field label="Dáng sản phẩm">
-        <select name="kind" defaultValue={p?.kind || "tee"}>
-          <option value="tee">Áo thun</option>
-          <option value="hoodie">Hoodie</option>
-          <option value="pants">Quần</option>
-          <option value="bag">Túi</option>
-          <option value="cap">Mũ</option>
-        </select>
-      </Field>
-    </>
-  );
-}
+
+
 function download(name: string, data: unknown) {
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
@@ -2227,7 +1911,6 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
       <Link href="/login" className="brand">
         <div className="brand-symbol">InsideOut</div>
         <div>
-          <strong>TERMINAL</strong>
           <span>v1.0.0</span>
         </div>
       </Link>
