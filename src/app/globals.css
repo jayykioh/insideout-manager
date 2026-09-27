@@ -50,8 +50,8 @@
   --text: #1A1410;
   --muted: #7A6E65;
 
-  /* Sidebar goes dark in light mode */
-  --sidebar: #1A1410;
+  /* Sidebar matches light theme for high contrast */
+  --sidebar: #EDE6DD;
 
   /* Accent stays red but less saturated in light */
   --accent: #B5341F;
@@ -229,8 +229,8 @@ small {
   min-height: 100dvh;
 }
 .sidebar {
-  width: 232px;
-  background: color-mix(in srgb, var(--sidebar) 75%, transparent);
+  width: 240px;
+  background: color-mix(in srgb, var(--sidebar) 85%, transparent);
   backdrop-filter: blur(20px) saturate(180%);
   color: var(--sidebar-text);
   border-right: 1px solid var(--border);
@@ -238,7 +238,7 @@ small {
   inset: 0 auto 0 0;
   display: flex;
   flex-direction: column;
-  padding: 29px 17px 14px;
+  padding: 32px 16px 24px;
   z-index: 20;
 }
 .brand {
@@ -254,6 +254,9 @@ small {
   line-height: 1;
   white-space: nowrap;
 }
+.brand-symbol .short-logo {
+  display: none;
+}
 .brand-symbol span {
   color: var(--accent);
 }
@@ -267,10 +270,7 @@ small {
   letter-spacing: -0.5px;
 }
 .brand > div > span:not(.brand-symbol span) {
-  font-size: 8px;
-  letter-spacing: 2.5px;
-  color: var(--sidebar-muted);
-  margin-top: 1px;
+  display: none;
 }
 .shop-select {
   margin: 35px 0 30px;
@@ -314,18 +314,20 @@ small {
 .sidebar nav {
   display: flex;
   flex-direction: column;
+  margin-top: 45px;
   gap: 5px;
 }
 .sidebar nav a {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-height: 44px;
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 10px 16px;
   color: var(--sidebar-muted);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 500;
   transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
 .sidebar nav a::before {
@@ -1835,13 +1837,16 @@ tbody tr:hover td:first-child {
 }
 @media (max-width: 950px) {
   .sidebar {
-    width: 78px;
-    padding: 28px 10px;
+    width: 80px;
+    padding: 32px 12px;
   }
   .brand {
     padding: 0;
     justify-content: center;
   }
+  .brand-symbol .full-logo { display: none; }
+  .brand-symbol .short-logo { display: block; }
+  
   .sidebar .brand > div:last-child,
   .shop-select,
   .nav-label,
@@ -1852,7 +1857,7 @@ tbody tr:hover td:first-child {
     display: none;
   }
   .sidebar nav {
-    margin-top: 35px;
+    margin-top: 45px;
   }
   .sidebar nav a {
     justify-content: center;
@@ -1862,8 +1867,8 @@ tbody tr:hover td:first-child {
     justify-content: center;
   }
   .workspace {
-    margin-left: 78px;
-    width: calc(100% - 78px);
+    margin-left: 80px;
+    width: calc(100% - 80px);
   }
   .pos-layout {
     grid-template-columns: minmax(0, 1fr) 290px;
@@ -1895,7 +1900,8 @@ tbody tr:hover td:first-child {
     padding: 0 8px env(safe-area-inset-bottom);
     border-right: 0;
     border-top: 1px solid var(--border);
-    background: var(--surface);
+    background: color-mix(in srgb, var(--sidebar) 85%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
   }
   .sidebar .brand,
   .sidebar-footer {
@@ -1904,11 +1910,11 @@ tbody tr:hover td:first-child {
   .sidebar nav {
     flex-direction: row;
     margin: 0;
-    justify-content: flex-start;
+    justify-content: space-around;
     overflow-x: auto;
     overflow-y: hidden;
     height: 100%;
-    gap: 4px;
+    gap: 8px;
     padding: 0 8px;
     scrollbar-width: none;
   }
@@ -1916,13 +1922,15 @@ tbody tr:hover td:first-child {
     display: none;
   }
   .sidebar nav a {
-    flex: 0 0 auto;
+    flex: 1 1 0;
     flex-direction: column;
-    gap: 4px;
+    justify-content: center;
+    gap: 6px;
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    font-size: 9.5px;
-    min-width: 70px;
+    padding: 8px 4px;
+    font-size: 10px;
+    min-width: 0;
+    color: var(--sidebar-muted);
   }
   .sidebar nav a::before {
     display: none; /* Hide vertical active line on mobile */
@@ -1932,20 +1940,20 @@ tbody tr:hover td:first-child {
     white-space: nowrap;
   }
   .sidebar nav a.active {
-    background: var(--sidebar-accent); /* keep subtle highlight */
-    color: var(--accent-text); /* Highlight text color */
+    background: var(--sidebar-accent);
+    color: var(--sidebar-text);
   }
   .mobile-logout {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1 1 0;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    font-size: 9.5px;
-    min-width: 70px;
+    padding: 8px 4px;
+    font-size: 10px;
+    min-width: 0;
     color: var(--sidebar-muted);
     background: transparent;
     border: none;

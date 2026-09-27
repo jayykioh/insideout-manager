@@ -1,13 +1,26 @@
-﻿"use client";
+"use client";
 import type { Snapshot } from "@/lib/types";
 import { date, expectedCash, money } from "@/lib/domain";
 import { Empty } from "@/components/ui";
 
-export function Stat({ label, value, detail }: { label: string; value: string; detail: string }) {
+import NumberFlow from '@number-flow/react';
+
+export function Stat({ label, value, detail, formatOptions }: { label: string; value: number | string; detail: string, formatOptions?: Intl.NumberFormatOptions }) {
   return (
     <section className="panel stat">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong>
+        {typeof value === 'number' ? (
+          <NumberFlow 
+            value={value} 
+            locales="vi-VN"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            format={(formatOptions ?? { style: "currency", currency: "VND", maximumFractionDigits: 0 }) as any} 
+          />
+        ) : (
+          value
+        )}
+      </strong>
       <small>{detail}</small>
     </section>
   );

@@ -8,7 +8,24 @@ import {
   businessDay,
 } from "../src/lib/domain";
 function opened() {
-  return reduceCommand(seed(), {
+  const source = seed();
+  source.user = source.members.find((member) => member.id === STAFF)!;
+  source.products = [
+    {
+      id: crypto.randomUUID(),
+      name: "Essential Tee",
+      sku: "IO-TEE-001",
+      category: "Áo thun",
+      variant: "Đen / M",
+      price: 350000,
+      cost: 140000,
+      stock: 24,
+      active: true,
+      color: "#303333",
+      kind: "tee",
+    },
+  ];
+  return reduceCommand(source, {
     type: "open_shift",
     payload: { opening_cash: 100000 },
   });
@@ -20,18 +37,22 @@ function sale(s = opened()) {
     lines: [
       { product_id: s.products[0].id, quantity: 2, price: s.products[0].price },
     ],
-    cash: 300000,
-    transfer: 400000,
+    cash: 700000,
+    transfer: 0,
+    card: 0,
+    payment_method: "cash" as const,
+    discount: 0,
+    note: "",
     occurred_at: new Date().toISOString(),
     offline: false,
   };
   return { s, p, result: reduceCommand(s, { type: "checkout", payload: p }) };
 }
-test("mixed payment creates one order and decrements stock", () => {
+test("cash payment creates one order and decrements stock", () => {
   const { s, result } = sale();
   assert.equal(result.orders[0].total, 700000);
   assert.equal(result.products[0].stock, s.products[0].stock - 2);
-  assert.equal(expectedCash(result.shifts[0], result.orders), 400000);
+  assert.equal(expectedCash(result.shifts[0], result.orders), 800000);
 });
 test("checkout replay has exactly one effect", () => {
   const { p, result } = sale();
@@ -40,9 +61,9 @@ test("checkout replay has exactly one effect", () => {
   assert.equal(replay.products[0].stock, result.products[0].stock);
   assert.equal(replay.movements.length, 1);
 });
-test("checkout replay with changed tender is rejected", () => {
+test("checkout replay with changed payment is rejected", () => {
   const {p,result}=sale();
-  assert.throws(()=>reduceCommand(result,{type:"checkout",payload:{...p,cash:p.cash+1,transfer:p.transfer-1}}));
+  assert.throws(()=>reduceCommand(result,{type:"checkout",payload:{...p,cash:0,card:p.cash,payment_method:"card"}}));
 });
 test("cancellation restores inventory once and removes cash from expected closing", () => {
   const { s, result } = sale();
@@ -50,6 +71,7 @@ test("cancellation restores inventory once and removes cash from expected closin
     type: "cancel",
     payload: { id: result.orders[0].id, reason: "Khách thay đổi" },
   };
+  result.user = result.members.find((m) => m.role === "admin")!;
   const cancelled = reduceCommand(result, command);
   assert.equal(cancelled.products[0].stock, s.products[0].stock);
   assert.equal(expectedCash(cancelled.shifts[0], cancelled.orders), 100000);
@@ -76,7 +98,7 @@ test("staff snapshot excludes costs, finance, history, and colleagues", () => {
   result.user = result.members.find((m) => m.id === STAFF)!;
   const s = staffSnapshot(result);
   assert.equal(s.members.length, 1);
-  assert.equal(s.orders.length, 0);
+  assert.equal(s.orders.length, 1);
   assert.ok(s.products.every((p) => p.cost === undefined));
   assert.equal(s.audit.length, 0);
 });
@@ -122,6 +144,29 @@ test("only one open shift per employee", () => {
       type: "open_shift",
       payload: { opening_cash: 0 },
     }),
+  );
+});
+test("admin checks out without a shift and cannot open or close shifts", () => {
+  const s = seed();
+  s.products = opened().products;
+  const product = s.products[0];
+  const checkout = {
+    id: crypto.randomUUID(),
+    lines: [{ product_id: product.id, quantity: 1, price: product.price }],
+    cash: 0,
+    transfer: 0,
+    card: product.price,
+    payment_method: "card",
+    discount: 0,
+    note: "Khách nhận tại quầy",
+    occurred_at: new Date().toISOString(),
+    offline: false,
+  };
+  const result = reduceCommand(s, { type: "checkout", payload: checkout });
+  assert.equal(result.orders[0].shift_id, undefined);
+  assert.equal(result.orders[0].payment_method, "card");
+  assert.throws(() =>
+    reduceCommand(s, { type: "open_shift", payload: { opening_cash: 0 } }),
   );
 });
 test("payroll uses elapsed minutes and integer rounding", () => {

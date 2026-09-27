@@ -4,7 +4,7 @@ export const amount = z.number().int().min(0).max(1_000_000_000);
 export const checkoutSchema = z
   .object({
     id: z.uuid(),
-    shift_id: z.uuid(),
+    shift_id: z.string().uuid().nullable().optional(),
     lines: z
       .array(
         z.object({
@@ -17,15 +17,41 @@ export const checkoutSchema = z
       .max(100),
     cash: amount,
     transfer: amount,
+    card: amount,
+    payment_method: z.enum(["cash", "bank_transfer", "card"]),
+    discount: amount,
+    note: z.string().trim().max(500),
     occurred_at: z.iso.datetime(),
     offline: z.boolean(),
   })
   .superRefine((value, ctx) => {
-    const total = value.lines.reduce((s, l) => s + l.price * l.quantity, 0);
-    if (total !== value.cash + value.transfer)
+    const subtotal = value.lines.reduce((s, l) => s + l.price * l.quantity, 0);
+    if (value.discount > subtotal)
+      ctx.addIssue({
+        code: "custom",
+        message: "Giảm giá không được vượt quá tạm tính.",
+        path: ["discount"],
+      });
+    const total = subtotal - value.discount;
+    if (total !== value.cash + value.transfer + value.card)
       ctx.addIssue({
         code: "custom",
         message: "Số tiền thanh toán chưa khớp tổng đơn.",
+      });
+    const expected = {
+      cash: [total, 0, 0],
+      bank_transfer: [0, total, 0],
+      card: [0, 0, total],
+    }[value.payment_method];
+    if (
+      value.cash !== expected[0] ||
+      value.transfer !== expected[1] ||
+      value.card !== expected[2]
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Đơn chỉ được chọn một phương thức thanh toán.",
+        path: ["payment_method"],
       });
     if (
       new Set(value.lines.map((l) => l.product_id)).size !== value.lines.length

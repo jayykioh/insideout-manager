@@ -11,6 +11,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { IconButton, Empty, Field, Modal, ProductArt } from "@/components/ui";
 import { Stat, ShiftTable } from "@/components/shared/stat-shift";
+import NumberFlow from "@number-flow/react";
 import { ProductFields } from "@/components/shared/product-fields";
 const OperationsPanel = dynamic(() => import("./operations-panel"), {
   loading: () => <div className="skeleton" aria-label="Đang tải" />,
@@ -62,7 +63,6 @@ import type {
   Checkout,
 } from "@/lib/types";
 import { businessDay, date, expectedCash, money, payroll } from "@/lib/domain";
-import { seed } from "@/lib/demo";
 import {
   demoLogin,
   execute,
@@ -115,6 +115,11 @@ const titles: Record<string, [string, string]> = {
   "/admin/settings": ["Cài đặt", "Một không gian làm việc theo cách của bạn."],
   "/profile": ["Tài khoản", "Thông tin hồ sơ và bảo mật của bạn."],
 };
+const paymentNames: Record<Order["payment_method"], string> = {
+  cash: "Tiền mặt",
+  bank_transfer: "Chuyển khoản",
+  card: "Quẹt thẻ",
+};
 
 export default function Manager() {
   const path = usePathname();
@@ -131,8 +136,9 @@ export default function Manager() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tất cả");
   const [payment, setPayment] = useState(false);
-  const [cash, setCash] = useState("");
-  const [method, setMethod] = useState("cash");
+  const [discount, setDiscount] = useState("");
+  const [note, setNote] = useState("");
+  const [method, setMethod] = useState<"cash" | "transfer" | "card">("cash");
   const [receipt, setReceipt] = useState<Order | null>(null);
   const [modal, setModal] = useState<
     | "product"
@@ -193,8 +199,29 @@ export default function Manager() {
     update();
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production")
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if ("serviceWorker" in navigator) {
+      if (process.env.NODE_ENV === "production") {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      } else {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((registrations) =>
+            Promise.all(registrations.map((registration) => registration.unregister())),
+          )
+          .then(() =>
+            caches
+              .keys()
+              .then((keys) =>
+                Promise.all(
+                  keys
+                    .filter((key) => key.startsWith("io-") || key.startsWith("workbox-"))
+                    .map((key) => caches.delete(key)),
+                ),
+              ),
+          )
+          .catch(() => {});
+      }
+    }
     return () => {
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
@@ -247,7 +274,7 @@ export default function Manager() {
           setCart({});
           router.push("/profiles");
         });
-      }, data.settings.idle_minutes * 60000);
+      }, (data.settings?.idle_minutes ?? 15) * 60000);
     };
     reset();
     window.addEventListener("pointerdown", reset);
@@ -306,9 +333,11 @@ export default function Manager() {
       </div>
     );
   const admin = data.user.role === "admin";
-  const current = data.shifts.find(
-    (s) => s.user_id === data.user.id && s.status === "open",
-  );
+  const current = admin
+    ? undefined
+    : data.shifts.find(
+        (s) => s.user_id === data.user.id && s.status === "open",
+      );
   const isProducts = ["/admin/products", "/admin/inventory"].includes(path);
   const isShift = ["/shift", "/attendance"].includes(path);
   const title = titles[path] || [
@@ -321,7 +350,9 @@ export default function Manager() {
       quantity,
     }))
     .filter((l) => l.product);
-  const total = lines.reduce((s, l) => s + l.product.price * l.quantity, 0);
+  const subtotal = lines.reduce((s, l) => s + l.product.price * l.quantity, 0);
+  const discountVal = discount === "" ? 0 : Number(discount);
+  const total = subtotal - discountVal;
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
   const selected = data.products.filter(
     (p) =>
@@ -342,26 +373,40 @@ export default function Manager() {
       return n;
     });
   async function checkout() {
-    if (!current) return;
+    if (!current && !admin) return;
     setBusy(true);
     setError("");
     const id = crypto.randomUUID();
-    const cashAmount =
-      method === "cash" ? total : method === "transfer" ? 0 : Number(cash);
+    const cashAmount = method === "cash" ? total : 0;
+    const transferAmount = method === "transfer" ? total : 0;
+    const cardVal = method === "card" ? total : 0;
+    
     const payload: Checkout = {
       id,
-      shift_id: current.id,
+      shift_id: current?.id,
       lines: lines.map((l) => ({
         product_id: l.product.id,
         quantity: l.quantity,
         price: l.product.price,
       })),
       cash: cashAmount,
-      transfer: total - cashAmount,
+      transfer: transferAmount,
+      card: cardVal,
+      payment_method: method === "transfer" ? "bank_transfer" : method,
+      discount: discountVal,
+      note,
       occurred_at: new Date().toISOString(),
       offline: !online,
     };
     try {
+      if (
+        !Number.isSafeInteger(discountVal) ||
+        discountVal < 0 ||
+        discountVal > subtotal
+      )
+        throw Error("Giảm giá phải là số nguyên và không vượt quá tạm tính.");
+      if (note.trim().length > 500)
+        throw Error("Ghi chú không được vượt quá 500 ký tự.");
       if (
         !Number.isSafeInteger(cashAmount) ||
         cashAmount < 0 ||
@@ -375,11 +420,15 @@ export default function Manager() {
           id,
           number: "LOCAL-" + id.slice(0, 8).toUpperCase(),
           user_id: data!.user.id,
-          shift_id: current.id,
+          shift_id: current?.id,
           created_at: payload.occurred_at,
           total,
           cash: payload.cash,
           transfer: payload.transfer,
+          card: payload.card,
+          payment_method: payload.payment_method,
+          discount: payload.discount,
+          note: payload.note,
           status: "completed",
           sync: "pending",
           lines: lines.map(({ product, quantity }) => ({
@@ -397,6 +446,9 @@ export default function Manager() {
         setNotice("Thanh toán thành công.");
       }
       setCart({});
+      setDiscount("");
+      setNote("");
+      setMethod("cash");
       setPayment(false);
       setMobileCart(false);
     } catch (e) {
@@ -454,7 +506,6 @@ export default function Manager() {
           hourly_rate: num("hourly_rate"),
           role: str("role"),
           active: true,
-          email: str("email"),
           pin: str("pin"),
         },
       });
@@ -549,11 +600,10 @@ export default function Manager() {
           disabled={!itemCount || busy}
           data-state={busy ? "loading" : undefined}
           onClick={() => {
-            if (!current) {
+            if (!current && !admin) {
               setModal("shift-open");
               return;
             }
-            setCash(String(total));
             setPayment(true);
           }}
         >
@@ -575,23 +625,16 @@ export default function Manager() {
       </a>
       <aside className="sidebar">
         <Link className="brand" href="/pos">
-          <div className="brand-symbol">InsideOut</div>
-          <div>
-            <span>v1.0.0</span>
+          <div className="brand-symbol">
+            <span className="full-logo">InsideOut</span>
+            <span className="short-logo">IO</span>
           </div>
         </Link>
-        <div className="shop-select">
-          <div className="shop-avatar">IO</div>
-          <div>
-            <strong>{data.settings.name}</strong>
-            <span>Cửa hàng của bạn</span>
-          </div>
-          <ChevronDown size={14} />
-        </div>
-        <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
         <nav>
           {navigation
-            .filter((n) => !n.admin || admin)
+            .filter(
+              (n) => (!n.admin || admin) && !(admin && n.href === "/shift"),
+            )
             .map((n) => (
               <Link
                 key={n.href}
@@ -605,31 +648,23 @@ export default function Manager() {
                     : ""
                 }
               >
-                <n.icon size={19} strokeWidth={1.6} />
+                <n.icon size={20} strokeWidth={1.6} />
                 <span>{n.label}</span>
-                {path === n.href && <span className="nav-active-dot" />}
               </Link>
             ))}
           <button className="mobile-logout" onClick={() => router.push("/profile")}>
-            <UserCircle size={19} strokeWidth={1.6} />
+            <UserCircle size={20} strokeWidth={1.6} />
             <span>Tài khoản</span>
           </button>
         </nav>
         <div className="sidebar-footer">
-          <div className="system-status">
-            <span className={"status-dot " + (online ? "" : "offline")} />
-            {online ? "Hệ thống sẵn sàng" : "Đang ngoại tuyến"}
-            <span className="version">v0.1</span>
-          </div>
           <button className="user-card" onClick={() => router.push("/profile")}>
             <span className="avatar" style={{ background: data.user.color }}>
               {data.user.name.split(" ").at(-1)?.[0]}
             </span>
             <span>
               <strong>{data.user.name}</strong>
-              <small>Quản lý tài khoản</small>
             </span>
-            <UserCircle size={18} />
           </button>
         </div>
       </aside>
@@ -677,10 +712,10 @@ export default function Manager() {
               <div className="sales-today">
                 <span>Doanh thu hôm nay</span>
                 <strong>
-                  {money(todaySales.reduce((s, o) => s + o.total, 0))}
+                  <NumberFlow value={todaySales.reduce((s, o) => s + o.total, 0)} locales="vi-VN" format={{ style: 'currency', currency: 'VND', maximumFractionDigits: 0 }} />
                 </strong>
                 <small>
-                  {todaySales.length} đơn hoàn thành <ArrowUpRight size={13} />
+                  <NumberFlow value={todaySales.length} /> đơn hoàn thành <ArrowUpRight size={13} />
                 </small>
               </div>
             ) : isProducts ? (
@@ -945,11 +980,7 @@ export default function Manager() {
                                     ?.name || "Nhân viên"}
                                 </td>
                                 <td>
-                                  {o.cash && o.transfer
-                                    ? "Kết hợp"
-                                    : o.cash
-                                      ? "Tiền mặt"
-                                      : "Chuyển khoản"}
+                                  {paymentNames[o.payment_method]}
                                 </td>
                                 <td>
                                   <span
@@ -976,60 +1007,69 @@ export default function Manager() {
                   )}
                 </section>
               )}
-              {isShift && (
+              {admin && path === "/shift" && (
+                <Empty
+                  title="Ca làm việc dành cho nhân viên"
+                  detail="Quản lý có thể bán hàng mà không cần chấm công vào hoặc kết ca."
+                  action={
+                    <Link className="primary" href="/pos">
+                      Quay lại bán hàng
+                    </Link>
+                  }
+                />
+              )}
+              {isShift && !admin && (
                 <>
                   <div className="stats-grid">
                     <Stat
                       label="Trạng thái hôm nay"
-                      value={current ? "Đang trong ca" : "Chưa mở ca"}
+                      value={current ? "Đang trong ca" : admin ? "Sẵn sàng bán hàng" : "Chưa mở ca"}
                       detail={
                         current
                           ? "Bắt đầu " + date(current.started_at)
-                          : "Sẵn sàng cho một ngày mới"
+                          : admin
+                            ? "Quản trị viên không yêu cầu mở ca"
+                            : "Sẵn sàng cho một ngày mới"
                       }
                     />
                     <Stat
                       label="Doanh thu trong ca"
-                      value={money(
-                        sales
+                      value={sales
                           .filter((o) => o.shift_id === current?.id)
-                          .reduce((s, o) => s + o.total, 0),
-                      )}
+                          .reduce((s, o) => s + o.total, 0)}
                       detail="Chỉ tính đơn hoàn thành"
                     />
                     <Stat
                       label="Tiền mặt dự kiến"
-                      value={money(
-                        current ? expectedCash(current, data.orders) : 0,
-                      )}
+                      value={current ? expectedCash(current, data.orders) : 0}
                       detail="Bao gồm tiền mặt đầu ca"
                     />
                   </div>
                   <section className="panel shift-panel">
-                    <div className="shift-icon">
-                      <Clock size={32} />
-                    </div>
-                    <h2>
-                      {current
-                        ? "Mọi thứ đang diễn ra tốt đẹp."
-                        : "Bắt đầu ca làm việc của bạn."}
-                    </h2>
-                    <p>
-                      {current
-                        ? "Khi hoàn thành ngày làm việc, kiểm đếm tiền mặt và gửi kết ca."
-                        : "Chấm công và nhập số tiền mặt đầu ca trước khi bán hàng."}
-                    </p>
-                    <button
-                      className="primary"
-                      onClick={() =>
-                        setModal(current ? "shift-close" : "shift-open")
-                      }
-                    >
-                      {current
-                        ? "Kết ca & chấm công ra"
-                        : "Chấm công vào & mở ca"}
-                      <ArrowUpRight size={17} />
-                    </button>
+                      <div className="shift-icon">
+                        <Clock size={32} />
+                      </div>
+                      <h2>
+                        {current
+                          ? "Mọi thứ đang diễn ra tốt đẹp."
+                          : "Bắt đầu ca làm việc của bạn."}
+                      </h2>
+                      <p>
+                        {current
+                          ? "Khi hoàn thành ngày làm việc, kiểm đếm tiền mặt và gửi kết ca."
+                          : "Chấm công và nhập số tiền mặt đầu ca trước khi bán hàng."}
+                      </p>
+                      <button
+                        className="primary"
+                        onClick={() =>
+                          setModal(current ? "shift-close" : "shift-open")
+                        }
+                      >
+                        {current
+                          ? "Kết ca & chấm công ra"
+                          : "Chấm công vào & mở ca"}
+                        <ArrowUpRight size={17} />
+                      </button>
                   </section>
                   <ShiftTable
                     data={data}
@@ -1221,23 +1261,19 @@ export default function Manager() {
                   <div className="stats-grid">
                     <Stat
                       label="Tổng doanh thu đã ghi nhận"
-                      value={money(sales.reduce((s, o) => s + o.total, 0))}
+                      value={sales.reduce((s, o) => s + o.total, 0)}
                       detail="Đơn hàng hoàn thành"
                     />
                     <Stat
                       label="Chi phí vận hành"
-                      value={money(
-                        data.expenses.reduce((s, e) => s + e.amount, 0),
-                      )}
+                      value={data.expenses.reduce((s, e) => s + e.amount, 0)}
                       detail="Các khoản chi đã ghi nhận"
                     />
                     <Stat
                       label="Ca chờ duyệt"
-                      value={String(
-                        data.shifts.filter((s) => s.status === "submitted")
-                          .length,
-                      )}
+                      value={data.shifts.filter((s) => s.status === "submitted").length}
                       detail="Đối soát tiền mặt"
+                      formatOptions={{ style: "decimal" }}
                     />
                   </div>
                   <ShiftTable
@@ -1335,7 +1371,7 @@ export default function Manager() {
                       Đổi mã PIN
                     </button>
                     <button className="primary" style={{ flex: 1, background: "var(--danger)", color: "white", borderColor: "var(--danger)" }} onClick={switchProfile}>
-                      <LogOut size={16} style={{ marginRight: 6 }} /> Khóa ca
+                      <LogOut size={16} style={{ marginRight: 6 }} /> Đăng xuất
                     </button>
                   </div>
                 </section>
@@ -1364,6 +1400,16 @@ export default function Manager() {
           }}
         >
           <div className="payment-total">
+            <span>Tạm tính</span>
+            <strong>{money(subtotal)}</strong>
+          </div>
+          {discountVal > 0 && (
+            <div className="summary-row">
+              <span>Giảm giá</span>
+              <strong>-{money(discountVal)}</strong>
+            </div>
+          )}
+          <div className="payment-total">
             <span>Tổng cần thanh toán</span>
             <strong>{money(total)}</strong>
           </div>
@@ -1371,36 +1417,41 @@ export default function Manager() {
             {[
               ["cash", "Tiền mặt"],
               ["transfer", "Chuyển khoản"],
-              ["mixed", "Kết hợp"],
+              ["card", "Quẹt thẻ"],
             ].map(([v, l]) => (
               <button
                 key={v}
                 className={method === v ? "selected" : ""}
-                onClick={() => setMethod(v)}
+                onClick={() =>
+                  setMethod(v as "cash" | "transfer" | "card")
+                }
               >
                 <CreditCard size={20} />
                 {l}
               </button>
             ))}
           </div>
-          {method === "mixed" && (
-            <>
-              <Field label="Số tiền mặt">
-                <input
-                  type="number"
-                  min="0"
-                  max={total}
-                  value={cash}
-                  onChange={(e) => setCash(e.target.value)}
-                />
-              </Field>
-              <div className="summary-row">
-                <span>Chuyển khoản</span>
-                <strong>{money(total - Number(cash))}</strong>
-              </div>
-            </>
-          )}
-          {method !== "cash" && (
+          <div className="form-grid">
+            <Field label="Giảm giá (₫)">
+              <input
+                type="number"
+                min="0"
+                max={subtotal}
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+              />
+            </Field>
+            <Field label="Ghi chú">
+              <input
+                type="text"
+                placeholder="VD: Khách hàng VIP..."
+                value={note}
+                maxLength={500}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </Field>
+          </div>
+          {method === "transfer" && (
             <p className="form-hint">
               Kiểm tra tiền đã vào tài khoản trước khi xác nhận. Ứng dụng không
               tự xác minh giao dịch ngân hàng.
@@ -1449,18 +1500,44 @@ export default function Manager() {
               </div>
             ))}
             <hr />
+            {receipt.discount > 0 && (
+              <div className="summary-row">
+                <span>Giảm giá</span>
+                <span>-{money(receipt.discount)}</span>
+              </div>
+            )}
             <div className="total-row">
               <strong>Tổng cộng</strong>
               <strong>{money(receipt.total)}</strong>
             </div>
             <div className="summary-row">
-              <span>Tiền mặt</span>
-              <span>{money(receipt.cash)}</span>
+              <span>Phương thức thanh toán</span>
+              <span>{paymentNames[receipt.payment_method]}</span>
             </div>
-            <div className="summary-row">
-              <span>Chuyển khoản</span>
-              <span>{money(receipt.transfer)}</span>
-            </div>
+            {receipt.cash > 0 && (
+              <div className="summary-row">
+                <span>Tiền mặt</span>
+                <span>{money(receipt.cash)}</span>
+              </div>
+            )}
+            {receipt.transfer > 0 && (
+              <div className="summary-row">
+                <span>Chuyển khoản</span>
+                <span>{money(receipt.transfer)}</span>
+              </div>
+            )}
+            {receipt.card > 0 && (
+              <div className="summary-row">
+                <span>Quẹt thẻ</span>
+                <span>{money(receipt.card)}</span>
+              </div>
+            )}
+            {receipt.note && (
+              <div className="summary-row">
+                <span>Ghi chú:</span>
+                <span>{receipt.note}</span>
+              </div>
+            )}
             <hr />
             <p>{data.settings.receipt_footer}</p>
           </div>
@@ -1585,9 +1662,6 @@ export default function Manager() {
                 </Field>
                 {!editing && (
                   <>
-                    <Field label="Email">
-                      <input name="email" type="email" required={!isDemo()} />
-                    </Field>
                     <Field label="Mã PIN (4 đến 6 số)">
                       <input
                         name="pin"
@@ -1664,7 +1738,11 @@ export default function Manager() {
               .filter((q) => q.actor_id === data.user.id)
               .map((q) => (
                 <div key={q.id} className="queue-item">
-                  <strong>{money(q.payload.cash + q.payload.transfer)}</strong>
+                  <strong>
+                    {money(
+                      q.payload.cash + q.payload.transfer + q.payload.card,
+                    )}
+                  </strong>
                   <p>{q.error || "Đã lưu trên thiết bị, chờ kết nối."}</p>
                   <button
                     className="secondary"
@@ -1854,20 +1932,58 @@ function SettingsForm({
     </div>
   );
 }
+
+function PinPad({ pin, setPin, busy, onConfirm }: { pin: string, setPin: (p: string) => void, busy: boolean, onConfirm?: () => void }) {
+  return (
+    <div className="pin-area" style={{ padding: 0 }}>
+      <div className="pin-dots" aria-label={pin.length + " số đã nhập"} style={{ marginBottom: 16 }}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className={i < pin.length ? "filled" : ""} />
+        ))}
+      </div>
+      <input
+        className="sr-only"
+        name="pin"
+        aria-label="Mã PIN"
+        inputMode="numeric"
+        type="password"
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+      />
+      <div className="pin-pad">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "←", "0", "✓"].map((key) => (
+          <button
+            type={key === "✓" && !onConfirm ? "submit" : "button"}
+            key={key}
+            disabled={busy}
+            aria-label={key === "←" ? "Xóa số" : key === "✓" ? "Xác nhận PIN" : key}
+            onClick={() => {
+              if (key === "←") setPin(pin.slice(0, -1));
+              else if (key === "✓") {
+                if (onConfirm && pin.length >= 4) onConfirm();
+              } else if (pin.length < 6) setPin(pin + key);
+            }}
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Login({ onSuccess }: { onSuccess: () => void }) {
   const [list, setList] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<"email" | "profiles">("email");
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
   useEffect(() => {
     profiles()
-      .then((m) => {
-        setList(m);
-        setView("profiles");
-      })
-      .catch(() => {});
+      .then(setList)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoadingProfiles(false));
   }, []);
   async function enterPin(value: string) {
     if (!selected) return;
@@ -1877,31 +1993,11 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
       if (isDemo()) await demoLogin(selected.id);
       else {
         await request("auth/pin", { id: selected.id, pin: value });
-        sessionStorage.setItem("io-user", selected.id);
       }
       onSuccess();
     } catch (e) {
       setError((e as Error).message);
       setPin("");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function login(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const f = new FormData(e.currentTarget);
-      sessionStorage.removeItem("io-demo");
-      const result = await request("auth/login", {
-        email: f.get("email"),
-        password: f.get("password"),
-      });
-      sessionStorage.setItem("io-user", result.id);
-      onSuccess();
-    } catch (e) {
-      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -1916,122 +2012,24 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
       </Link>
       <section
         className={
-          "login-content " + (view === "profiles" ? "profiles-content" : "")
+          "login-content profiles-content"
         }
       >
         <div className="eyebrow">MỘT KHÔNG GIAN. CÙNG NHAU VẬN HÀNH.</div>
         <h1>
           {selected
             ? "Chào " + selected.name.split(" ").at(-1) + "."
-            : view === "profiles"
-              ? "Ai đang làm việc?"
-              : "Một ngày tốt đẹp,\nbắt đầu từ đây."}
+            : "Ai đang làm việc?"}
         </h1>
         <p>
           {selected
-            ? "Nhập mã PIN để vào không gian làm việc."
-            : view === "profiles"
-              ? "Chọn hồ sơ của bạn để tiếp tục."
-              : "Đăng nhập để đồng hành cùng cửa hàng hôm nay."}
+            ? "Nhập mã PIN để đăng nhập."
+            : "Chọn hồ sơ được lưu trong cửa hàng rồi nhập PIN."}
         </p>
-        {view === "email" ? (
-          <form className="stack-form" onSubmit={login}>
-            <Field label="Email hoặc số điện thoại">
-              <input
-                name="email"
-                type="text"
-                autoComplete="username"
-                placeholder="you@insideout.vn"
-                required
-              />
-            </Field>
-            <Field label="Mật khẩu">
-              <input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                minLength={6}
-              />
-            </Field>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <button
-              className="primary full"
-              disabled={busy}
-              data-state={busy ? "loading" : undefined}
-            >
-              {busy ? "Đang đăng nhập…" : "Vào không gian làm việc"}
-              <ArrowUpRight size={18} />
-            </button>
-            <div className="login-divider">
-              <span>Khám phá trước khi bắt đầu</span>
-            </div>
-            <button
-              type="button"
-              className="secondary full"
-              onClick={() => {
-                sessionStorage.setItem("io-demo", "true");
-                setList(seed().members);
-                setView("profiles");
-                setError("");
-              }}
-            >
-              Trải nghiệm với dữ liệu mẫu
-              <ArrowUpRight size={16} />
-            </button>
-            <small className="muted">
-              Dữ liệu mẫu chỉ lưu trên trình duyệt, tách biệt cửa hàng thật.
-            </small>
-          </form>
-        ) : selected ? (
+        {selected ? (
           <div className="pin-area">
-            <div className="pin-dots" aria-label={pin.length + " số đã nhập"}>
-              {Array.from({ length: 6 }, (_, i) => (
-                <span key={i} className={i < pin.length ? "filled" : ""} />
-              ))}
-            </div>
-            {isDemo() && (
-              <p className="form-hint">Chế độ trải nghiệm: nhập 4 số bất kỳ.</p>
-            )}
-            <input
-              className="sr-only"
-              aria-label="Mã PIN"
-              inputMode="numeric"
-              type="password"
-              value={pin}
-              onChange={(e) =>
-                setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-            />
-            <div className="pin-pad">
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "←", "0", "✓"].map(
-                (key) => (
-                  <button
-                    key={key}
-                    disabled={busy}
-                    aria-label={
-                      key === "←"
-                        ? "Xóa số"
-                        : key === "✓"
-                          ? "Xác nhận PIN"
-                          : key
-                    }
-                    onClick={() => {
-                      if (key === "←") setPin(pin.slice(0, -1));
-                      else if (key === "✓") {
-                        if (pin.length >= 4) enterPin(pin);
-                      } else if (pin.length < 6) setPin(pin + key);
-                    }}
-                  >
-                    {key}
-                  </button>
-                ),
-              )}
-            </div>
+
+            <PinPad pin={pin} setPin={setPin} busy={busy} onConfirm={() => enterPin(pin)} />
             {error && (
               <p className="form-error" role="alert">
                 {error}
@@ -2051,10 +2049,11 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
           </div>
         ) : (
           <>
-            <div className="profile-grid">
-              {list
-                .filter((m) => m.active)
-                .map((m) => (
+            {loadingProfiles ? (
+              <div className="skeleton" aria-label="Đang tải hồ sơ" />
+            ) : (
+              <div className="profile-grid">
+                {list.filter((m) => m.active).map((m) => (
                   <button
                     className="profile-card"
                     key={m.id}
@@ -2070,17 +2069,16 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
                     </small>
                   </button>
                 ))}
-            </div>
-            <button
-              className="text-button"
-              onClick={() => {
-                setView("email");
-                sessionStorage.removeItem("io-demo");
-              }}
-            >
-              Đăng nhập bằng email
-              <ArrowUpRight size={14} />
-            </button>
+              </div>
+            )}
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            {!loadingProfiles && !error && list.length === 0 && (
+              <p className="form-hint">Cửa hàng chưa có hồ sơ hoạt động.</p>
+            )}
           </>
         )}
       </section>

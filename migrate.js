@@ -1,7 +1,10 @@
+/* eslint-disable */
 const fs = require('fs');
 
 async function runQuery(query) {
-  const res = await fetch('https://api.supabase.com/v1/projects/zfzyzwfliihqgeinnyuy/database/query', {
+  const projectId = process.env.SUPABASE_PROJECT_ID;
+  if (!projectId) throw new Error("SUPABASE_PROJECT_ID is not set in environment");
+  const res = await fetch(`https://api.supabase.com/v1/projects/${projectId}/database/query`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`,
@@ -36,6 +39,7 @@ async function run() {
       { name: '202609170002', file: 'supabase/migrations/202609170002_operations.sql' },
       { name: '202609170003', file: 'supabase/migrations/202609170003_reconciliation.sql' },
       { name: '202609170004', file: 'supabase/migrations/202609170004_indexes.sql' },
+      { name: '202609270005', file: 'supabase/migrations/202609270005_checkout_fields.sql' },
       { name: 'bootstrap', file: 'supabase/bootstrap.sql' }
     ];
 

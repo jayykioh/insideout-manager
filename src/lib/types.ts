@@ -33,11 +33,15 @@ export type Order = {
   id: string;
   number: string;
   user_id: string;
-  shift_id: string;
+  shift_id?: string | null;
   created_at: string;
   total: number;
   cash: number;
   transfer: number;
+  card: number;
+  payment_method: "cash" | "bank_transfer" | "card";
+  discount: number;
+  note: string;
   status: "completed" | "cancelled";
   lines: Line[];
   reason?: string;
@@ -109,10 +113,14 @@ export type Device={id:string;label:string;expires_at:string;revoked_at:string|n
 export type Command = { type: string; payload: Record<string, unknown> };
 export type Checkout = {
   id: string;
-  shift_id: string;
+  shift_id?: string | null;
   lines: { product_id: string; quantity: number; price: number }[];
   cash: number;
   transfer: number;
+  card: number;
+  payment_method: "cash" | "bank_transfer" | "card";
+  discount: number;
+  note: string;
   occurred_at: string;
   offline: boolean;
 };

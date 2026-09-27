@@ -11,19 +11,35 @@ const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 const ok = (data: unknown) =>
   NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
-async function device() {
+async function loginShop() {
   const token = (await cookies()).get("io-device")?.value;
-  if (!token) throw Error("Thiết bị chưa được quản lý đăng ký.");
-  const { data, error } = await supabase(undefined, true)
-    .from("device_sessions")
-    .select("id,shop_id")
-    .eq("token_hash", digest(token))
-    .is("revoked_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .single();
-  if (error || !data)
-    throw Error("Phiên thiết bị đã hết hạn. Quản lý cần đăng nhập lại.");
-  return data;
+  if (token) {
+    const { data } = await supabase(undefined, true)
+      .from("device_sessions")
+      .select("id,shop_id")
+      .eq("token_hash", digest(token))
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (data) return data;
+  }
+  const service = supabase(undefined, true);
+  const configuredShop = process.env.DEFAULT_SHOP_ID;
+  if (configuredShop) {
+    const { data, error } = await service
+      .from("shops")
+      .select("id")
+      .eq("id", configuredShop)
+      .single();
+    if (error || !data) throw Error("Cửa hàng đăng nhập chưa được cấu hình.");
+    return { id: null, shop_id: data.id };
+  }
+  const { data, error } = await service.from("shops").select("id").limit(2);
+  if (error || data.length !== 1)
+    throw Error(
+      "Thiết bị chưa được gắn cửa hàng. Cấu hình DEFAULT_SHOP_ID trên máy chủ.",
+    );
+  return { id: null, shop_id: data[0].id };
 }
 async function handler(
   req: NextRequest,
@@ -33,58 +49,18 @@ async function handler(
     const route = (await params).route.join("/");
     if (req.method === "POST") {
       const origin = req.headers.get("origin");
-      if (!origin || origin !== new URL(req.url).origin)
+      const reqOrigin = new URL(req.url).origin;
+      if (
+        !origin ||
+        (origin !== reqOrigin &&
+          origin.replace("127.0.0.1", "localhost") !==
+            reqOrigin.replace("127.0.0.1", "localhost"))
+      )
         return okError("Yêu cầu không hợp lệ.", 403);
     }
     const p = req.method === "POST" && route !== 'assets' ? await req.json() : {};
-    if (route === "auth/login" && req.method === "POST") {
-      const input = z
-        .object({
-          email: z.string().min(3).max(254),
-          password: z.string().min(6).max(128),
-        })
-        .parse(p);
-      const credentials = input.email.includes("@")
-        ? { email: input.email, password: input.password }
-        : { phone: input.email, password: input.password };
-      const { data, error } =
-        await supabase().auth.signInWithPassword(credentials);
-      if (error || !data.session)
-        throw Error("Thông tin đăng nhập chưa đúng. Vui lòng thử lại.");
-      const client = supabase(data.session.access_token);
-      const { data: member } = await client
-        .from("members")
-        .select("id,shop_id,role")
-        .eq("id", data.user.id)
-        .eq("active", true)
-        .single();
-      if (!member) throw Error("Tài khoản chưa được cấp quyền cửa hàng.");
-      await saveSession(data.session);
-      (await cookies()).delete('io-bound-device');
-      if (member.role === "admin") {
-        const token = randomBytes(32).toString("hex");
-        const { error: deviceError } = await supabase(undefined, true)
-          .from("device_sessions")
-          .insert({
-            shop_id: member.shop_id,
-            token_hash: digest(token),
-            label: "Quầy bán hàng",
-            enrolled_by: member.id,
-            expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-          });
-        if (deviceError) throw Error("Không đăng ký được thiết bị.");
-        (await cookies()).set("io-device", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          path: "/",
-          maxAge: 30 * 86400,
-        });
-      }
-      return ok({ id: data.user.id });
-    }
     if (route === "auth/profiles" && req.method === "GET") {
-      const d = await device();
+      const d = await loginShop();
       const { data, error } = await supabase(undefined, true)
         .from("members")
         .select("id,name,role,active,color")
@@ -97,8 +73,16 @@ async function handler(
       const input = z
         .object({ id: z.uuid(), pin: z.string().regex(/^\d{4,6}$/) })
         .parse(p);
-      const d = await device();
+      const d = await loginShop();
       const service = supabase(undefined, true);
+      const { data: member, error: memberError } = await service
+        .from("members")
+        .select("id,shop_id")
+        .eq("id", input.id)
+        .eq("shop_id", d.shop_id)
+        .eq("active", true)
+        .single();
+      if (memberError || !member) throw Error("Hồ sơ không còn hoạt động.");
       const result = await service.rpc("verify_profile_pin", {
         p_shop: d.shop_id,
         p_user: input.id,
@@ -111,7 +95,7 @@ async function handler(
       const { data: userData, error: userError } =
         await service.auth.admin.getUserById(input.id);
       if (userError || !userData.user.email)
-        throw Error("Tài khoản PIN cần có email.");
+        throw Error("Tài khoản PIN chưa được khởi tạo đúng.");
       const link = await service.auth.admin.generateLink({
         type: "magiclink",
         email: userData.user.email,
@@ -128,7 +112,39 @@ async function handler(
       )
         throw Error("Không xác minh được phiên.");
       await saveSession(verified.data.session);
-      (await cookies()).set('io-bound-device',d.id,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:30*86400});
+      const jar = await cookies();
+      let deviceId = d.id;
+      if (!deviceId) {
+        const token = randomBytes(32).toString("hex");
+        const enrolled = await service
+          .from("device_sessions")
+          .insert({
+            shop_id: d.shop_id,
+            token_hash: digest(token),
+            label: "Thiết bị PIN",
+            enrolled_by: input.id,
+            expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+          })
+          .select("id")
+          .single();
+        if (enrolled.error || !enrolled.data)
+          throw Error("Không ghi nhận được thiết bị đăng nhập.");
+        deviceId = enrolled.data.id;
+        jar.set("io-device", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          path: "/",
+          maxAge: 30 * 86400,
+        });
+      }
+      jar.set("io-bound-device", deviceId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 30 * 86400,
+      });
       return ok({ id: input.id });
     }
     if (route === "auth/lock" && req.method === "POST") {
@@ -165,7 +181,6 @@ async function handler(
         const input = z
           .object({
             name: z.string().trim().min(1).max(100),
-            email: z.email(),
             pin: z.string().regex(/^\d{4,6}$/),
             hourly_rate: z.number().int().min(0).max(10000000),
             role: z.enum(["admin", "staff"]),
@@ -173,14 +188,12 @@ async function handler(
           .parse(command.payload);
         const service = supabase(undefined, true);
         const created = await service.auth.admin.createUser({
-          email: input.email,
+          email: `${randomBytes(16).toString("hex")}@insideout.local`,
           password: randomBytes(32).toString("hex"),
           email_confirm: true,
         });
         if (created.error)
-          throw Error(
-            "Không tạo được tài khoản. Email có thể đã được sử dụng.",
-          );
+          throw Error("Không tạo được tài khoản PIN.");
         const memberResult = await service.rpc("provision_member", {
           p_user: created.data.user.id,
           p_shop: member.shop_id,
@@ -213,9 +226,13 @@ async function handler(
           : typeof e === "object" && e && "message" in e
             ? String(e.message)
             : "Không thể hoàn thành. Vui lòng thử lại.";
+    // Treat missing Supabase config on protected routes the same as AUTH_REQUIRED
+    const isAuthError =
+      message === "AUTH_REQUIRED" ||
+      message.startsWith("Chưa kết nối Supabase");
     return okError(
-      message,
-      message === "AUTH_REQUIRED" ? 401 : message === "FORBIDDEN" ? 403 : 400,
+      isAuthError ? "AUTH_REQUIRED" : message,
+      isAuthError ? 401 : message === "FORBIDDEN" ? 403 : 400,
     );
   }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ALTER COLUMN shift_id DROP NOT NULL;

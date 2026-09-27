@@ -13,13 +13,11 @@ export async function operationsRoute(route:string,req:NextRequest,p:Record<stri
  if(member.role!=='admin')throw Error('FORBIDDEN');
  if(route==='devices'&&req.method==='GET'){const {data,error}=await supabase(undefined,true).from('device_sessions').select('id,label,expires_at,revoked_at').eq('shop_id',member.shop_id).order('expires_at',{ascending:false});if(error)throw error;return json(data);}
  if(route==='security/pin'&&req.method==='POST'){
-  const input=z.object({id:z.uuid(),pin:z.string().regex(/^\d{4,6}$/),password:z.string().min(6).max(128)}).parse(p);
-  if(!user.email&&!user.phone)throw Error('Tài khoản quản lý thiếu thông tin đăng nhập.');
-  const verifier=supabase();const auth=await verifier.auth.signInWithPassword(user.email?{email:user.email,password:input.password}:{phone:user.phone!,password:input.password});
-  if(auth.error||auth.data.user?.id!==user.id)throw Error('Mật khẩu quản lý chưa đúng.');
-  await verifier.auth.signOut({scope:'local'});
-  const target=await client.from('members').select('id').eq('id',input.id).eq('shop_id',member.shop_id).single();if(target.error)throw Error('Không tìm thấy nhân viên.');
+  const input=z.object({id:z.uuid(),pin:z.string().regex(/^\d{4,6}$/),current_pin:z.string().regex(/^\d{4,6}$/)}).parse(p);
   const service=supabase(undefined,true);
+  const verified=await service.rpc('verify_profile_pin',{p_shop:member.shop_id,p_user:user.id,p_pin:input.current_pin});
+  if(verified.error||!verified.data?.ok)throw Error(verified.data?.message||'PIN quản lý chưa đúng.');
+  const target=await client.from('members').select('id').eq('id',input.id).eq('shop_id',member.shop_id).single();if(target.error)throw Error('Không tìm thấy nhân viên.');
   const result=await service.from('staff_pins').upsert({user_id:input.id,shop_id:member.shop_id,hash:await hash(input.pin,12),attempt_count:0,window_start:new Date().toISOString(),locked_until:null,requires_unlock:false,changed_at:new Date().toISOString()});
   if(result.error)throw result.error;
   await service.from('audit_logs').insert({shop_id:member.shop_id,actor_id:user.id,action:'pin_reset',detail:input.id});return json({ok:true});
@@ -44,4 +42,3 @@ export async function operationsRoute(route:string,req:NextRequest,p:Record<stri
  }
  return null;
 }
-

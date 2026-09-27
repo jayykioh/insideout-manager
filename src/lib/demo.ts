@@ -46,112 +46,7 @@ export function seed(): Snapshot {
         color: "#91a89a",
       },
     ],
-    products: [
-      {
-        id: uid(11),
-        name: "Essential Tee",
-        sku: "IO-TEE-001",
-        category: "Áo thun",
-        variant: "Đen / M",
-        price: 350000,
-        cost: 140000,
-        stock: 24,
-        active: true,
-        color: "#303333",
-        kind: "tee",
-      },
-      {
-        id: uid(12),
-        name: "Everyday Oversized",
-        sku: "IO-TEE-002",
-        category: "Áo thun",
-        variant: "Trắng / L",
-        price: 390000,
-        cost: 160000,
-        stock: 18,
-        active: true,
-        color: "#e1dfd6",
-        kind: "tee",
-      },
-      {
-        id: uid(13),
-        name: "Studio Hoodie",
-        sku: "IO-HD-001",
-        category: "Hoodie",
-        variant: "Xám / L",
-        price: 690000,
-        cost: 280000,
-        stock: 12,
-        active: true,
-        color: "#8b8c87",
-        kind: "hoodie",
-      },
-      {
-        id: uid(14),
-        name: "Relaxed Cargo",
-        sku: "IO-PT-001",
-        category: "Quần",
-        variant: "Olive / M",
-        price: 590000,
-        cost: 240000,
-        stock: 8,
-        active: true,
-        color: "#666b5b",
-        kind: "pants",
-      },
-      {
-        id: uid(15),
-        name: "Daily Tote",
-        sku: "IO-BG-001",
-        category: "Phụ kiện",
-        variant: "Natural / One size",
-        price: 220000,
-        cost: 80000,
-        stock: 32,
-        active: true,
-        color: "#c2b8a4",
-        kind: "bag",
-      },
-      {
-        id: uid(16),
-        name: "Signature Cap",
-        sku: "IO-CP-001",
-        category: "Phụ kiện",
-        variant: "Đen / One size",
-        price: 250000,
-        cost: 90000,
-        stock: 5,
-        active: true,
-        color: "#353839",
-        kind: "cap",
-      },
-      {
-        id: uid(17),
-        name: "Boxy Pocket Tee",
-        sku: "IO-TEE-003",
-        category: "Áo thun",
-        variant: "Nâu / M",
-        price: 420000,
-        cost: 170000,
-        stock: 16,
-        active: true,
-        color: "#837065",
-        kind: "tee",
-      },
-      {
-        id: uid(18),
-        name: "Weekend Hoodie",
-        sku: "IO-HD-002",
-        category: "Hoodie",
-        variant: "Kem / M",
-        price: 720000,
-        cost: 290000,
-        stock: 9,
-        active: true,
-        color: "#c8c1af",
-        kind: "hoodie",
-      },
-    ],
+    products: [],
     orders: [],
     shifts: [],
     expenses: [],
@@ -191,14 +86,14 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
       const c = checkoutSchema.parse(p);
       const previous=s.orders.find((o)=>o.id===c.id);
       if(previous){
-        if(previous.user_id!==s.user.id||previous.shift_id!==c.shift_id||previous.cash!==c.cash||previous.transfer!==c.transfer||previous.created_at!==c.occurred_at||JSON.stringify(previous.lines.map(({product_id,quantity,price})=>({product_id,quantity,price})))!==JSON.stringify(c.lines.map(({product_id,quantity,price})=>({product_id,quantity,price}))))throw Error("Mã đơn đã được dùng cho nội dung khác.");
+        if(previous.user_id!==s.user.id||previous.shift_id!==c.shift_id||previous.cash!==c.cash||previous.transfer!==c.transfer||previous.card!==c.card||previous.payment_method!==c.payment_method||previous.discount!==c.discount||previous.note!==c.note||previous.created_at!==c.occurred_at||JSON.stringify(previous.lines.map(({product_id,quantity,price})=>({product_id,quantity,price})))!==JSON.stringify(c.lines.map(({product_id,quantity,price})=>({product_id,quantity,price}))))throw Error("Mã đơn đã được dùng cho nội dung khác.");
         return s;
       }
       const shift = s.shifts.find(
         (x) =>
           x.id === c.shift_id && x.user_id === s.user.id && x.status === "open",
       );
-      if (!shift) throw Error("Bắt đầu ca làm trước khi thanh toán.");
+      if (!admin && !shift) throw Error("Bắt đầu ca làm trước khi thanh toán.");
       const lines = c.lines.map((l) => {
         const product = s.products.find(
           (x) => x.id === l.product_id && x.active,
@@ -224,10 +119,14 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
         user_id: s.user.id,
         shift_id: c.shift_id,
         created_at: c.occurred_at,
-        total: c.cash + c.transfer,
+        total: c.cash + c.transfer + c.card,
         cost_total:c.lines.reduce((n,l)=>n+(s.products.find(x=>x.id===l.product_id)?.cost||0)*l.quantity,0),
         cash: c.cash,
         transfer: c.transfer,
+        card: c.card,
+        payment_method: c.payment_method,
+        discount: c.discount,
+        note: c.note,
         status: "completed",
         lines,
       });
@@ -260,6 +159,7 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
       break;
     }
     case "open_shift": {
+      if (admin) throw Error("Ca làm việc chỉ dành cho nhân viên.");
       if (s.shifts.some((x) => x.user_id === s.user.id && x.status === "open"))
         throw Error("Đã có ca đang mở.");
       const opening = Number(p.opening_cash);
@@ -280,6 +180,7 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
       break;
     }
     case "close_shift": {
+      if (admin) throw Error("Ca làm việc chỉ dành cho nhân viên.");
       const shift = s.shifts.find(
         (x) => x.id === p.id && x.user_id === s.user.id && x.status === "open",
       );

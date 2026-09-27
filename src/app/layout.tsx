@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import Manager from "@/components/manager";
 import "./globals.css";
+
 export const metadata: Metadata = {
   title: "Inside Out · Manager",
   description: "Không gian vận hành của Inside Out",
@@ -10,15 +12,19 @@ export const metadata: Metadata = {
     title: "Inside Out",
   },
 };
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#0B0C0E",
 };
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <Manager />
+      </body>
     </html>
   );
 }

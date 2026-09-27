@@ -8,6 +8,7 @@ import {
   Wallet,
   Check,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 import type { Snapshot, Command, PayrollLine } from "@/lib/types";
 import { businessDay, date, money } from "@/lib/domain";
@@ -469,7 +470,7 @@ export default function OperationsPanel({
                     await request("security/pin", {
                       id: selected,
                       pin: f.get("pin"),
-                      password: f.get("password"),
+                      current_pin: f.get("current_pin"),
                     });
                   form.reset();
                   await onReload();
@@ -486,10 +487,12 @@ export default function OperationsPanel({
                   required
                 />
               </Field>
-              <Field label="Mật khẩu chính của quản lý">
+              <Field label="PIN hiện tại của quản lý">
                 <input
                   type="password"
-                  name="password"
+                  name="current_pin"
+                  inputMode="numeric"
+                  pattern="[0-9]{4,6}"
                   autoComplete="current-password"
                   required={!isDemo()}
                 />
@@ -502,11 +505,51 @@ export default function OperationsPanel({
                 Đặt PIN & mở khóa
               </button>
               <p className="form-hint">
-                Mật khẩu chính được xác minh lại trước khi thay đổi PIN hoặc mở
-                khóa hồ sơ.
+                PIN quản lý được xác minh lại trước khi thay đổi hoặc mở khóa
+                hồ sơ.
               </p>
             </form>
             <AssetUpload data={data} kind="avatar" onReload={onReload} />
+          </section>
+
+          <section className="panel settings-form">
+            <h2>
+              <UserPlus size={18} /> Thêm nhân viên mới
+            </h2>
+            <form
+              className="stack-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const f = new FormData(form);
+                run(async () => {
+                  if (isDemo()) {
+                    throw Error("Không hỗ trợ tạo nhân viên trong chế độ dùng thử.");
+                  }
+                  await onSave({
+                    type: "member",
+                    payload: {
+                    name: f.get("name"),
+                    pin: f.get("pin"),
+                    hourly_rate: 25000,
+                    role: "staff",
+                    },
+                  });
+                  form.reset();
+                  await onReload();
+                });
+              }}
+            >
+              <Field label="Tên nhân viên">
+                <input type="text" name="name" required placeholder="Nguyễn Văn B" />
+              </Field>
+              <Field label="Mã PIN (4 đến 6 số)">
+                <input type="password" name="pin" inputMode="numeric" pattern="[0-9]{4,6}" required />
+              </Field>
+              <button className="primary" disabled={busy} data-state={busy ? "loading" : undefined}>
+                Tạo tài khoản
+              </button>
+            </form>
           </section>
         </div>
       )}
@@ -540,8 +583,8 @@ export default function OperationsPanel({
             }}
           >
             <Field label="Ca cần điều chỉnh">
-              <select name="id" required>
-                {closed.map((s) => (
+              <select name="id" required disabled={closed.length === 0}>
+                {closed.length === 0 ? <option>Chưa có dữ liệu</option> : closed.map((s) => (
                   <option key={s.id} value={s.id}>
                     {data.members.find((m) => m.id === s.user_id)?.name} ·{" "}
                     {date(s.started_at)}
@@ -786,8 +829,8 @@ function AssetUpload({
       }}
     >
       <Field label={kind === "product" ? "Sản phẩm" : "Hồ sơ"}>
-        <select name="id">
-          {items.map((i) => (
+        <select name="id" required disabled={items.length === 0}>
+          {items.length === 0 ? <option>Chưa có dữ liệu</option> : items.map((i) => (
             <option key={i.id} value={i.id}>
               {i.name}
             </option>
@@ -809,7 +852,7 @@ function AssetUpload({
       )}
       <button
         className="secondary"
-        disabled={busy}
+        disabled={busy || items.length === 0}
         data-state={busy ? "loading" : undefined}
       >
         <Upload size={16} />
