@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Inside Out · Manager",
   description: "Không gian vận hành của Inside Out",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/icons/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
