@@ -441,9 +441,33 @@ export default function Manager() {
         });
         setNotice("Đơn đã lưu trên thiết bị, chờ đồng bộ.");
       } else {
-        const s = await reload();
-        setReceipt(s.orders.find((o) => o.id === id) || null);
+        const orderData = {
+          id,
+          number: "POS-" + id.slice(0, 8).toUpperCase(),
+          user_id: data!.user.id,
+          shift_id: current?.id,
+          created_at: payload.occurred_at,
+          total,
+          cash: payload.cash,
+          transfer: payload.transfer,
+          card: payload.card,
+          payment_method: payload.payment_method,
+          discount: payload.discount,
+          note: payload.note,
+          status: "completed",
+          sync: "synced",
+          lines: lines.map(({ product, quantity }) => ({
+            product_id: product.id,
+            name: product.name,
+            variant: product.variant,
+            price: product.price,
+            quantity,
+          })),
+        };
+        setData((prev) => prev ? { ...prev, orders: [orderData as any, ...prev.orders] } : prev);
+        setReceipt(orderData as any);
         setNotice("Thanh toán thành công.");
+        reload().catch(console.error); // Background sync
       }
       setCart({});
       setDiscount("");
@@ -462,6 +486,16 @@ export default function Manager() {
     const f = new FormData(e.currentTarget);
     const str = (key: string) => String(f.get(key) || "");
     const num = (key: string) => Number(f.get(key));
+    if (modal === "change-pin") {
+      try {
+        await request("auth/change-pin", { old_pin: str("old_pin"), new_pin: str("new_pin") });
+        setModal(null);
+        setNotice("Đổi mã PIN thành công.");
+      } catch (e) {
+        setError((e as Error).message);
+      }
+      return;
+    }
     if (modal === "product")
       await mutate({
         type: "product",
@@ -591,37 +625,92 @@ export default function Manager() {
           <span>Số lượng</span>
           <span>{itemCount} sản phẩm</span>
         </div>
-        {discountVal > 0 && (
-          <div className="summary-row">
-            <span>Giảm giá</span>
-            <span style={{ color: "var(--danger)" }}>-{money(discountVal)}</span>
-          </div>
+        
+        <div className="cart-fields">
+          <Field label="Giảm giá (₫)">
+            <input
+              type="number"
+              min="0"
+              max={subtotal}
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+              placeholder="Nhập số tiền giảm..."
+            />
+          </Field>
+          <Field label="Ghi chú">
+            <input
+              type="text"
+              placeholder="VD: Khách hàng VIP..."
+              value={note}
+              maxLength={500}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="payment-methods cart-payment-methods">
+          {[
+            ["cash", "Tiền mặt"],
+            ["transfer", "Chuyển khoản"],
+            ["card", "Quẹt thẻ"],
+          ].map(([v, l]) => (
+            <button
+              key={v}
+              className={method === v ? "selected" : ""}
+              onClick={() => setMethod(v as "cash" | "transfer" | "card")}
+            >
+              <CreditCard size={16} />
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {method === "transfer" && (
+          <p className="form-hint" style={{ marginTop: -5, marginBottom: 10 }}>
+            Kiểm tra tiền đã vào tài khoản trước khi xác nhận.
+          </p>
         )}
+
         <div className="total-row">
           <strong>Tổng cộng</strong>
           <strong>{money(total)}</strong>
         </div>
-        {note && (
-          <div className="summary-row" style={{ fontSize: "0.8rem", opacity: 0.7, gap: "0.5rem" }}>
-            <span>Ghi chú:</span>
-            <span style={{ textAlign: "right", wordBreak: "break-word" }}>{note}</span>
-          </div>
+        
+        {error && (
+          <p role="alert" className="form-error" style={{ marginBottom: 10 }}>
+            {error}
+          </p>
         )}
-        <button
-          className="primary checkout-button"
-          disabled={!itemCount || busy}
-          data-state={busy ? "loading" : undefined}
-          onClick={() => {
-            if (!current && !admin) {
-              setModal("shift-open");
-              return;
-            }
-            setPayment(true);
-          }}
-        >
-          [ THANH TOÁN ]
-        </button>
-        <p className="secure-note">
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+          <button 
+            className="secondary" 
+            style={{ flex: 1, padding: "12px 8px" }} 
+            onClick={() => {
+              window.print();
+            }}
+            disabled={!itemCount}
+          >
+            <Printer size={16} style={{ marginRight: 4 }} /> In tạm tính
+          </button>
+          <button
+            className="primary checkout-button"
+            style={{ flex: 2 }}
+            disabled={!itemCount || busy}
+            data-state={busy ? "loading" : undefined}
+            onClick={() => {
+              if (!current && !admin) {
+                setModal("shift-open");
+                return;
+              }
+              checkout();
+            }}
+          >
+            Thanh toán
+          </button>
+        </div>
+        
+        <p className="secure-note" style={{ marginTop: 15 }}>
           <ShieldCheck size={12} />{" "}
           {isDemo()
             ? "Trải nghiệm · Dữ liệu trên thiết bị"
@@ -1376,10 +1465,7 @@ export default function Manager() {
                   </div>
 
                   <div style={{ display: "flex", gap: "10px", marginTop: "40px", flexWrap: "wrap" }}>
-                    <button className="secondary" style={{ flex: 1 }} onClick={() => {
-                      if (admin) router.push("/admin/settings");
-                      else setNotice("Vui lòng liên hệ Quản lý để thay đổi mã PIN.");
-                    }}>
+                    <button className="secondary" style={{ flex: 1 }} onClick={() => setModal("change-pin")}>
                       Đổi mã PIN
                     </button>
                     <button className="primary" style={{ flex: 1, background: "var(--danger)", color: "white", borderColor: "var(--danger)" }} onClick={switchProfile}>
@@ -1404,90 +1490,11 @@ export default function Manager() {
           {notice}
         </div>
       )}
-      {payment && (
-        <Modal
-          title="Hoàn tất thanh toán"
-          close={() => {
-            if (!busy) setPayment(false);
-          }}
-        >
-          <div className="payment-total">
-            <span>Tạm tính</span>
-            <strong>{money(subtotal)}</strong>
-          </div>
-          {discountVal > 0 && (
-            <div className="summary-row">
-              <span>Giảm giá</span>
-              <strong>-{money(discountVal)}</strong>
-            </div>
-          )}
-          <div className="payment-total">
-            <span>Tổng cần thanh toán</span>
-            <strong>{money(total)}</strong>
-          </div>
-          <div className="payment-methods">
-            {[
-              ["cash", "Tiền mặt"],
-              ["transfer", "Chuyển khoản"],
-              ["card", "Quẹt thẻ"],
-            ].map(([v, l]) => (
-              <button
-                key={v}
-                className={method === v ? "selected" : ""}
-                onClick={() =>
-                  setMethod(v as "cash" | "transfer" | "card")
-                }
-              >
-                <CreditCard size={20} />
-                {l}
-              </button>
-            ))}
-          </div>
-          <div className="form-grid">
-            <Field label="Giảm giá (₫)">
-              <input
-                type="number"
-                min="0"
-                max={subtotal}
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            </Field>
-            <Field label="Ghi chú">
-              <input
-                type="text"
-                placeholder="VD: Khách hàng VIP..."
-                value={note}
-                maxLength={500}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </Field>
-          </div>
-          {method === "transfer" && (
-            <p className="form-hint">
-              Kiểm tra tiền đã vào tài khoản trước khi xác nhận. Ứng dụng không
-              tự xác minh giao dịch ngân hàng.
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
-          )}
-          <button
-            className="primary full"
-            disabled={busy}
-            data-state={busy ? "loading" : undefined}
-            onClick={checkout}
-          >
-            {busy
-              ? "Đang ghi nhận…"
-              : online
-                ? "Xác nhận thanh toán"
-                : "Lưu đơn trên thiết bị"}
-            <Check size={17} />
-          </button>
-        </Modal>
+      {notice && (
+        <div className="toast" role="status">
+          <Check size={17} />
+          {notice}
+        </div>
       )}
       {receipt && (
         <Modal title="Chi tiết đơn hàng" close={() => setReceipt(null)}>
@@ -1597,6 +1604,7 @@ export default function Manager() {
               member: editing ? "Thông tin nhân viên" : "Thêm nhân viên",
               "shift-open": "Bắt đầu ca làm",
               "shift-close": "Kết ca & đối soát",
+              "change-pin": "Đổi mã PIN",
             }[modal]
           }
           close={() => {
@@ -1605,6 +1613,16 @@ export default function Manager() {
           }}
         >
           <form onSubmit={submitForm} className="stack-form">
+            {modal === "change-pin" && (
+              <>
+                <Field label="Mã PIN hiện tại">
+                  <input name="old_pin" type="password" required pattern="[0-9]{4,6}" placeholder="Nhập PIN cũ" />
+                </Field>
+                <Field label="Mã PIN mới (4-6 số)">
+                  <input name="new_pin" type="password" required pattern="[0-9]{4,6}" placeholder="Nhập PIN mới" />
+                </Field>
+              </>
+            )}
             {modal === "product" && (
               <ProductFields product={editing as Product | null} />
             )}{" "}
@@ -1801,6 +1819,62 @@ export default function Manager() {
           </div>
         </Modal>
       )}
+
+      {!receipt && lines.length > 0 && (
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media screen {
+            #pre-bill { display: none !important; }
+          }
+          @media print {
+            #pre-bill { display: block !important; }
+            #receipt { display: none !important; }
+          }
+        `}} />
+      )}
+      {!receipt && lines.length > 0 && (
+        <div className="receipt" id="pre-bill">
+          <h2>{data?.settings.name}</h2>
+          <p>{data?.settings.address}</p>
+          <p>{data?.settings.phone}</p>
+          <hr />
+          <h3>PHIẾU TẠM TÍNH</h3>
+          <p>{date(new Date().toISOString())}</p>
+          {lines.map((l) => (
+            <div className="receipt-line" key={l.product.id}>
+              <span>
+                {l.product.name}
+                <small>
+                  {l.product.variant} · x{l.quantity}
+                </small>
+              </span>
+              <strong>{money(l.product.price * l.quantity)}</strong>
+            </div>
+          ))}
+          <hr />
+          {discountVal > 0 && (
+            <div className="summary-row">
+              <span>Giảm giá</span>
+              <span>-{money(discountVal)}</span>
+            </div>
+          )}
+          <div className="total-row">
+            <strong>Tổng cộng</strong>
+            <strong>{money(total)}</strong>
+          </div>
+          <div className="summary-row">
+            <span>Thanh toán dự kiến</span>
+            <span>{method === "cash" ? "Tiền mặt" : method === "card" ? "Quẹt thẻ" : "Chuyển khoản"}</span>
+          </div>
+          {note && (
+            <div className="summary-row">
+              <span>Ghi chú:</span>
+              <span>{note}</span>
+            </div>
+          )}
+          <hr />
+          <p>Phiếu tạm tính chưa phải là hóa đơn chính thức.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -1960,7 +2034,14 @@ function PinPad({ pin, setPin, busy, onConfirm }: { pin: string, setPin: (p: str
         inputMode="numeric"
         type="password"
         value={pin}
+        autoFocus
         onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && pin.length >= 4 && onConfirm && !busy) {
+            e.preventDefault();
+            onConfirm();
+          }
+        }}
       />
       <div className="pin-pad">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "←", "0", "✓"].map((key) => (
@@ -1991,11 +2072,19 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
-  useEffect(() => {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [regName, setRegName] = useState("");
+  
+  const loadProfiles = () => {
+    setLoadingProfiles(true);
     profiles()
       .then(setList)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoadingProfiles(false));
+  };
+  
+  useEffect(() => {
+    loadProfiles();
   }, []);
   async function enterPin(value: string) {
     if (!selected) return;
@@ -2006,7 +2095,26 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
       else {
         await request("auth/pin", { id: selected.id, pin: value });
       }
+      snapshot().catch(console.error); // Prefetch state in background
       onSuccess();
+    } catch (e) {
+      setError((e as Error).message);
+      setPin("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function registerAccount() {
+    if (!regName.trim() || pin.length < 4) return;
+    setBusy(true);
+    setError("");
+    try {
+      await request("auth/register", { name: regName, pin });
+      setMode("login");
+      setRegName("");
+      setPin("");
+      loadProfiles();
     } catch (e) {
       setError((e as Error).message);
       setPin("");
@@ -2019,7 +2127,7 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
       <Link href="/login" className="brand">
         <div className="brand-symbol">InsideOut</div>
         <div>
-          <span>v1.0.0</span>
+          <span>v1.0.2</span>
         </div>
       </Link>
       <section
@@ -2038,7 +2146,38 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
             ? "Nhập mã PIN để đăng nhập."
             : "Chọn hồ sơ được lưu trong cửa hàng rồi nhập PIN."}
         </p>
-        {selected ? (
+        {mode === "register" ? (
+          <div className="pin-area">
+            <Field label="Tên hiển thị">
+              <input
+                value={regName}
+                onChange={(e) => setRegName(e.target.value)}
+                disabled={busy}
+                placeholder="Nhập tên của bạn"
+                maxLength={50}
+                style={{ marginBottom: "16px" }}
+              />
+            </Field>
+            <p>Tạo mã PIN (4-6 số)</p>
+            <PinPad pin={pin} setPin={setPin} busy={busy || !regName.trim()} onConfirm={registerAccount} />
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button
+              className="text-button"
+              onClick={() => {
+                setMode("login");
+                setPin("");
+                setError("");
+              }}
+            >
+              <ArrowLeft size={15} />
+              Quay lại đăng nhập
+            </button>
+          </div>
+        ) : selected ? (
           <div className="pin-area">
 
             <PinPad pin={pin} setPin={setPin} busy={busy} onConfirm={() => enterPin(pin)} />
@@ -2090,6 +2229,20 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
             )}
             {!loadingProfiles && !error && list.length === 0 && (
               <p className="form-hint">Cửa hàng chưa có hồ sơ hoạt động.</p>
+            )}
+            {!loadingProfiles && (
+              <button
+                className="text-button"
+                style={{ marginTop: 24, justifyContent: "center", width: "100%" }}
+                onClick={() => {
+                  setMode("register");
+                  setPin("");
+                  setError("");
+                }}
+              >
+                <Plus size={15} />
+                Đăng ký tài khoản nhân viên
+              </button>
             )}
           </>
         )}

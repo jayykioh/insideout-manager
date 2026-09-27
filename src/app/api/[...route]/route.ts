@@ -12,17 +12,6 @@ const digest = (value: string) =>
 const ok = (data: unknown) =>
   NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
 async function loginShop() {
-  const token = (await cookies()).get("io-device")?.value;
-  if (token) {
-    const { data } = await supabase(undefined, true)
-      .from("device_sessions")
-      .select("id,shop_id")
-      .eq("token_hash", digest(token))
-      .is("revoked_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-    if (data) return data;
-  }
   const service = supabase(undefined, true);
   const configuredShop = process.env.DEFAULT_SHOP_ID;
   if (configuredShop) {
@@ -31,13 +20,13 @@ async function loginShop() {
       .select("id")
       .eq("id", configuredShop)
       .single();
-    if (error || !data) throw Error("Cửa hàng đăng nhập chưa được cấu hình.");
+    if (error || !data) throw Error("Cửa hàng chưa được cấu hình đúng trên hệ thống.");
     return { id: null, shop_id: data.id };
   }
-  const { data, error } = await service.from("shops").select("id").limit(2);
-  if (error || data.length !== 1)
+  const { data, error } = await service.from("shops").select("id").limit(1);
+  if (error || !data.length)
     throw Error(
-      "Thiết bị chưa được gắn cửa hàng. Cấu hình DEFAULT_SHOP_ID trên máy chủ.",
+      "Hệ thống chưa được khởi tạo. Vui lòng thêm cửa hàng vào cơ sở dữ liệu hoặc cấu hình DEFAULT_SHOP_ID.",
     );
   return { id: null, shop_id: data[0].id };
 }
@@ -68,6 +57,44 @@ async function handler(
         .eq("active", true);
       if (error) throw error;
       return ok(data);
+    }
+    if (route === "auth/register" && req.method === "POST") {
+      const input = z
+        .object({
+          name: z.string().trim().min(1).max(100),
+          pin: z.string().regex(/^\d{4,6}$/),
+        })
+        .parse(p);
+      const d = await loginShop();
+      const service = supabase(undefined, true);
+      const created = await service.auth.admin.createUser({
+        email: `${randomBytes(16).toString("hex")}@insideout.local`,
+        password: randomBytes(32).toString("hex"),
+        email_confirm: true,
+      });
+      if (created.error) throw Error("Không tạo được tài khoản.");
+      
+      const memberErr = await service.from("members").insert({
+        id: created.data.user.id,
+        shop_id: d.shop_id,
+        name: input.name,
+        role: "staff",
+        hourly_rate: 25000,
+      });
+      if (memberErr.error) {
+        await service.auth.admin.deleteUser(created.data.user.id);
+        throw memberErr.error;
+      }
+      const pinErr = await service.from("staff_pins").insert({
+        user_id: created.data.user.id,
+        shop_id: d.shop_id,
+        hash: await hash(input.pin, 12),
+      });
+      if (pinErr.error) {
+        await service.auth.admin.deleteUser(created.data.user.id);
+        throw pinErr.error;
+      }
+      return ok({ ok: true });
     }
     if (route === "auth/pin" && req.method === "POST") {
       const input = z
@@ -112,40 +139,35 @@ async function handler(
       )
         throw Error("Không xác minh được phiên.");
       await saveSession(verified.data.session);
-      const jar = await cookies();
-      let deviceId = d.id;
-      if (!deviceId) {
-        const token = randomBytes(32).toString("hex");
-        const enrolled = await service
-          .from("device_sessions")
-          .insert({
-            shop_id: d.shop_id,
-            token_hash: digest(token),
-            label: "Thiết bị PIN",
-            enrolled_by: input.id,
-            expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-          })
-          .select("id")
-          .single();
-        if (enrolled.error || !enrolled.data)
-          throw Error("Không ghi nhận được thiết bị đăng nhập.");
-        deviceId = enrolled.data.id;
-        jar.set("io-device", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          path: "/",
-          maxAge: 30 * 86400,
-        });
-      }
-      jar.set("io-bound-device", deviceId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 30 * 86400,
-      });
+
       return ok({ id: input.id });
+    }
+    if (route === "auth/change-pin" && req.method === "POST") {
+      const input = z
+        .object({
+          old_pin: z.string().regex(/^\d{4,6}$/),
+          new_pin: z.string().regex(/^\d{4,6}$/),
+        })
+        .parse(p);
+      const auth = await authenticated();
+      if (!auth) throw Error("Không có quyền.");
+      const d = await loginShop();
+      const service = supabase(undefined, true);
+      const result = await service.rpc("verify_profile_pin", {
+        p_shop: d.shop_id,
+        p_user: auth.user.id,
+        p_pin: input.old_pin,
+      });
+      if (result.error || !result.data?.ok)
+        throw Error("Mã PIN hiện tại không đúng.");
+      const newHash = await hash(input.new_pin, 12);
+      const { error } = await service
+        .from("staff_pins")
+        .update({ hash: newHash })
+        .eq("user_id", auth.user.id)
+        .eq("shop_id", d.shop_id);
+      if (error) throw Error("Không thể cập nhật mã PIN.");
+      return ok({ ok: true });
     }
     if (route === "auth/lock" && req.method === "POST") {
       const jar = await cookies();

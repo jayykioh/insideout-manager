@@ -43,28 +43,37 @@ export async function profiles(): Promise<Member[]> {
   }
   return request("auth/profiles");
 }
-export async function snapshot(): Promise<Snapshot> {
-  const store = await db();
-  if (isDemo()) {
-    const s: Snapshot = (await store.get("kv", "demo")) || seed();
-    const user=s.members.find(m=>m.id===sessionStorage.getItem("io-user")&&m.active);
-    if (!user) throw Error("AUTH_REQUIRED");
-    s.user=user;
-    return staffSnapshot(s);
-  }
-  try {
-    const s = await request("state");
-    const safe:Snapshot={...s,members:[s.user],products:s.products.map(({cost,...p}:Snapshot['products'][number])=>{void cost;return p;}),orders:s.orders.filter((o:Snapshot['orders'][number])=>o.user_id===s.user.id).map(({cost_total,...o}:Snapshot['orders'][number])=>{void cost_total;return o;}),shifts:s.shifts.filter((sh:Snapshot['shifts'][number])=>sh.user_id===s.user.id),expenses:[],audit:[],movements:[],pay_rules:[],payroll_periods:[],devices:[]};
-    await store.put("kv", safe, "cache");
-    return s;
-  } catch (e) {
-    if (!navigator.onLine) {
-      const cached = await store.get("kv", "cache");
-      if (cached && sessionStorage.getItem("io-user") === cached.user.id)
-        return cached;
+let snapshotPromise: Promise<Snapshot> | null = null;
+export function snapshot(): Promise<Snapshot> {
+  if (snapshotPromise) return snapshotPromise;
+  snapshotPromise = (async () => {
+    try {
+      const store = await db();
+      if (isDemo()) {
+        const s: Snapshot = (await store.get("kv", "demo")) || seed();
+        const user=s.members.find(m=>m.id===sessionStorage.getItem("io-user")&&m.active);
+        if (!user) throw Error("AUTH_REQUIRED");
+        s.user=user;
+        return staffSnapshot(s);
+      }
+      try {
+        const s = await request("state");
+        const safe:Snapshot={...s,members:[s.user],products:s.products.map(({cost,...p}:Snapshot['products'][number])=>{void cost;return p;}),orders:s.orders.filter((o:Snapshot['orders'][number])=>o.user_id===s.user.id).map(({cost_total,...o}:Snapshot['orders'][number])=>{void cost_total;return o;}),shifts:s.shifts.filter((sh:Snapshot['shifts'][number])=>sh.user_id===s.user.id),expenses:[],audit:[],movements:[],pay_rules:[],payroll_periods:[],devices:[]};
+        await store.put("kv", safe, "cache");
+        return s;
+      } catch (e) {
+        if (!navigator.onLine) {
+          const cached = await store.get("kv", "cache");
+          if (cached && sessionStorage.getItem("io-user") === cached.user.id)
+            return cached;
+        }
+        throw e;
+      }
+    } finally {
+      snapshotPromise = null;
     }
-    throw e;
-  }
+  })();
+  return snapshotPromise;
 }
 export async function execute(command: Command) {
   if (isDemo()) {

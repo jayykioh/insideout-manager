@@ -73,16 +73,11 @@ export default function OperationsPanel({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
-    [deviceList, setDeviceList] = useState(data.devices || []),
     [queue, setQueue] = useState<Pending[]>([]),
     [selected, setSelected] = useState(data.members[0]?.id || "");
   useEffect(() => {
     if (path === "/admin/settings") {
       pending().then(setQueue);
-      if (!isDemo())
-        request("devices")
-          .then(setDeviceList)
-          .catch((e) => setError(e.message));
     }
   }, [path, data]);
   async function run(fn: () => Promise<unknown>) {
@@ -648,50 +643,53 @@ export default function OperationsPanel({
         </section>
       )}
       {path === "/admin/settings" && (
-        <>
+        <div className="settings-layout">
           <section className="panel settings-form">
-            <h2>Thiết bị tại quầy</h2>
+            <h2>Cài đặt cửa hàng</h2>
             <p className="muted small-text">
-              Thu hồi sẽ ngăn đăng nhập PIN và truy cập qua phiên gắn với thiết
-              bị này.
+              Thông tin cửa hàng sẽ hiển thị trên ứng dụng và hóa đơn in cho khách.
             </p>
-            {deviceList.length ? (
-              deviceList.map((d) => (
-                <div className="device-row" key={d.id}>
-                  <div>
-                    <strong>{d.label}</strong>
-                    <p className="small-text muted">
-                      Hết hạn: {date(d.expires_at)}
-                    </p>
-                  </div>
-                  <button
-                    className="secondary"
-                    disabled={busy || !!d.revoked_at}
-                    data-state={busy ? "loading" : undefined}
-                    onClick={() =>
-                      run(async () => {
-                        if (
-                          await onSave({
-                            type: "device_revoke",
-                            payload: { id: d.id },
-                          })
-                        ) {
-                          if (!isDemo())
-                            setDeviceList(await request("devices"));
-                        }
-                      })
-                    }
-                  >
-                    {d.revoked_at ? "Đã thu hồi" : "Thu hồi"}
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className="muted">
-                Chưa có thiết bị được đăng ký trong môi trường này.
-              </p>
-            )}
+            <form
+              className="stack-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                run(async () => {
+                  const s = { ...data.settings };
+                  s.name = String(f.get("name") || "").trim();
+                  s.address = String(f.get("address") || "").trim();
+                  s.phone = String(f.get("phone") || "").trim();
+                  s.receipt_footer = String(f.get("receipt_footer") || "").trim();
+                  if (await onSave({ type: "settings", payload: s })) {
+                    await onReload();
+                  }
+                });
+              }}
+            >
+              <Field label="Tên cửa hàng">
+                <input name="name" required defaultValue={data.settings.name} maxLength={100} />
+              </Field>
+              <Field label="Địa chỉ">
+                <input name="address" defaultValue={data.settings.address} maxLength={200} />
+              </Field>
+              <div className="form-grid">
+                <Field label="Số điện thoại">
+                  <input name="phone" defaultValue={data.settings.phone} maxLength={30} />
+                </Field>
+              </div>
+              <Field label="Lời chúc cuối hóa đơn">
+                <textarea name="receipt_footer" defaultValue={data.settings.receipt_footer} maxLength={300} rows={3} />
+              </Field>
+              <button
+                className="primary"
+                disabled={busy}
+                data-state={busy ? "loading" : undefined}
+              >
+                Lưu cài đặt
+              </button>
+            </form>
           </section>
+          
           <section className="panel settings-form">
             <h2>Đối soát đơn chờ đồng bộ</h2>
             <p className="muted small-text">
@@ -715,7 +713,7 @@ export default function OperationsPanel({
                   }}
                 >
                   <strong>
-                    {money(q.payload.cash + q.payload.transfer)} ·{" "}
+                    {money(q.payload.cash + q.payload.transfer + q.payload.card)} ·{" "}
                     {data.members.find((m) => m.id === q.actor_id)?.name ||
                       q.actor_id}
                   </strong>
@@ -734,11 +732,11 @@ export default function OperationsPanel({
               ))}
             {!queue.length && (
               <p className="muted">
-                Không có đơn cần đối soát trên thiết bị này.
+                Không có đơn cần chờ đối soát thủ công.
               </p>
             )}
           </section>
-        </>
+        </div>
       )}
     </div>
   );

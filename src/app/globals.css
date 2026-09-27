@@ -893,6 +893,29 @@ h1 {
 .cart-bottom {
   padding: 20px 20px 12px;
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cart-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0;
+}
+.cart-payment-methods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 0px;
+}
+.cart-payment-methods button {
+  padding: 8px 4px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 .summary-row {
   display: flex;
@@ -2218,10 +2241,12 @@ tbody tr:hover td:first-child {
     box-shadow: none;
   }
   #receipt,
-  #receipt * {
+  #receipt *,
+  #pre-bill,
+  #pre-bill * {
     visibility: visible !important;
   }
-  #receipt {
+  #receipt, #pre-bill {
     position: absolute;
     top: 0;
     left: 0;
