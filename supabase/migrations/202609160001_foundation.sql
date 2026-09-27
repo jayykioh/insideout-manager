@@ -130,7 +130,7 @@ begin
  'shop_id',s,'user',(select to_jsonb(m) from public.members m where id=auth.uid()),
  'members',coalesce((select jsonb_agg(to_jsonb(m)) from public.members m),'[]'::jsonb),
  'products',coalesce((select jsonb_agg(to_jsonb(p)||case when public.is_admin() then jsonb_build_object('cost',c.cost) else '{}'::jsonb end order by p.name) from public.products p left join public.product_costs c on c.product_id=p.id),'[]'::jsonb),
- 'orders',coalesce((select jsonb_agg(to_jsonb(o)||jsonb_build_object('number','IO-'||lpad(o.number::text,5,'0'),'lines',coalesce((select jsonb_agg(to_jsonb(i)) from public.order_items i where i.order_id=o.id),'[]'::jsonb)) order by o.created_at desc) from public.orders o),'[]'::jsonb),
+ 'orders',coalesce((select jsonb_agg(to_jsonb(o)||jsonb_build_object('number','IO-'||lpad(o.number::text,5,'0'),'payment_method',case when o.card>0 then 'card' when o.transfer>0 then 'bank_transfer' else 'cash' end,'discount',o.discount,'note',o.note,'lines',coalesce((select jsonb_agg(to_jsonb(i)) from public.order_items i where i.order_id=o.id),'[]'::jsonb)) order by o.created_at desc) from public.orders o),'[]'::jsonb),
  'shifts',coalesce((select jsonb_agg(to_jsonb(x) order by started_at desc) from public.shifts x),'[]'::jsonb),
  'expenses',coalesce((select jsonb_agg(to_jsonb(x) order by created_at desc) from public.expenses x),'[]'::jsonb),
  'movements',coalesce((select jsonb_agg(to_jsonb(x) order by created_at desc) from public.inventory_movements x),'[]'::jsonb),

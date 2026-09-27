@@ -585,16 +585,28 @@ export default function Manager() {
       <div className="cart-bottom">
         <div className="summary-row">
           <span>Tạm tính</span>
-          <span>{money(total)}</span>
+          <span>{money(subtotal)}</span>
         </div>
         <div className="summary-row">
           <span>Số lượng</span>
           <span>{itemCount} sản phẩm</span>
         </div>
+        {discountVal > 0 && (
+          <div className="summary-row">
+            <span>Giảm giá</span>
+            <span style={{ color: "var(--danger)" }}>-{money(discountVal)}</span>
+          </div>
+        )}
         <div className="total-row">
           <strong>Tổng cộng</strong>
           <strong>{money(total)}</strong>
         </div>
+        {note && (
+          <div className="summary-row" style={{ fontSize: "0.8rem", opacity: 0.7, gap: "0.5rem" }}>
+            <span>Ghi chú:</span>
+            <span style={{ textAlign: "right", wordBreak: "break-word" }}>{note}</span>
+          </div>
+        )}
         <button
           className="primary checkout-button"
           disabled={!itemCount || busy}
