@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { operationsRoute } from '@/lib/operations-server';
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { supabase, authenticated, saveSession } from "@/lib/server";
 import { checkoutSchema, productSchema, settingsSchema } from "@/lib/domain";
 export const dynamic = "force-dynamic";
-const digest = (value: string) =>
-  createHash("sha256").update(value).digest("hex");
+
 const ok = (data: unknown) =>
   NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
 async function loginShop() {

@@ -28,6 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html lang="vi" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
         <Manager />
+        {children}
       </body>
     </html>
   );

@@ -1,10 +1,8 @@
 "use client";
 import {
   useEffect,
-  useRef,
   useState,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -25,7 +23,6 @@ import {
   Bell,
   BellOff,
   Check,
-  ChevronDown,
   ChevronRight,
   Clock,
   Cloud as CloudCheck,
@@ -37,7 +34,6 @@ import {
   LayoutDashboard,
   LogOut,
   Minus,
-  Package,
   Plus,
   Search,
   Settings as SettingsIcon,
@@ -47,8 +43,6 @@ import {
   Moon,
   Trash2,
   UserCircle,
-  Users,
-  Wallet,
   X,
   RefreshCw,
   Printer,
@@ -149,7 +143,7 @@ export default function Manager() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tất cả");
-  const [payment, setPayment] = useState(false);
+
   const [discount, setDiscount] = useState("");
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<"cash" | "transfer" | "card">("cash");
@@ -164,6 +158,7 @@ export default function Manager() {
     | "shift-close"
     | "queue"
     | "change-pin"
+    | "qr"
     | null
   >(null);
   const [editing, setEditing] = useState<Product | Member | null>(null);
@@ -182,7 +177,13 @@ export default function Manager() {
   }, []);
   // Track notification permission on mount
   useEffect(() => {
-    setNotifPerm(getPermission());
+    let mounted = true;
+    Promise.resolve().then(() => {
+      if (mounted) setNotifPerm(getPermission());
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
   const handleRequestNotif = async () => {
     const perm = await requestPermission();
@@ -291,7 +292,7 @@ export default function Manager() {
       navigator.serviceWorker?.removeEventListener("message", synced);
       clearInterval(timer);
     };
-  }, [data, online]);
+  }, [data, online, queue.length]);
   useEffect(() => {
     if (!data) return;
     let timer: ReturnType<typeof setTimeout>;
@@ -512,7 +513,6 @@ export default function Manager() {
       setDiscount("");
       setNote("");
       setMethod("cash");
-      setPayment(false);
       setMobileCart(false);
 
       submitCheckout(data!, payload)
@@ -722,7 +722,10 @@ export default function Manager() {
             <button
               key={v}
               className={method === v ? "selected" : ""}
-              onClick={() => setMethod(v as "cash" | "transfer" | "card")}
+              onClick={() => {
+                setMethod(v as "cash" | "transfer" | "card");
+                if (v === "transfer") setModal("qr");
+              }}
             >
               <CreditCard size={16} />
               {l}
@@ -731,9 +734,17 @@ export default function Manager() {
         </div>
 
         {method === "transfer" && (
-          <p className="form-hint" style={{ marginTop: -5, marginBottom: 10 }}>
-            Kiểm tra tiền đã vào tài khoản trước khi xác nhận.
-          </p>
+          <div style={{ textAlign: "center", marginBottom: 10 }}>
+            <img 
+              src="/qr-code-transfer.jpg" 
+              alt="QR Code" 
+              style={{ width: "100%", maxWidth: "160px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer", display: "block", margin: "0 auto" }}
+              onClick={() => setModal("qr")}
+            />
+            <p className="form-hint" style={{ marginTop: 8 }}>
+              Kiểm tra tiền đã vào tài khoản trước khi xác nhận.
+            </p>
+          </div>
         )}
 
         <div className="total-row">
@@ -1152,7 +1163,7 @@ export default function Manager() {
                             )
                             .map((o) => (
                               <tr key={o.id}>
-                                <td>
+                                <td data-label="Mã đơn">
                                   <button
                                     className="link-button"
                                     onClick={() => setReceipt(o)}
@@ -1160,15 +1171,15 @@ export default function Manager() {
                                     {o.number}
                                   </button>
                                 </td>
-                                <td>{date(o.created_at)}</td>
-                                <td>
+                                <td data-label="Thời gian">{date(o.created_at)}</td>
+                                <td data-label="Nhân viên">
                                   {data.members.find((m) => m.id === o.user_id)
                                     ?.name || "Nhân viên"}
                                 </td>
-                                <td>
+                                <td data-label="Thanh toán">
                                   {paymentNames[o.payment_method]}
                                 </td>
-                                <td>
+                                <td data-label="Trạng thái">
                                   <span
                                     className={
                                       "badge " +
@@ -1194,7 +1205,7 @@ export default function Manager() {
                                       </button>
                                     )}
                                 </td>
-                                <td className="right money">
+                                <td className="right money" data-label="Tổng cộng">
                                   {money(o.total)}
                                 </td>
                               </tr>
@@ -1315,7 +1326,7 @@ export default function Manager() {
                           )
                           .map((p) => (
                             <tr key={p.id}>
-                              <td>
+                              <td data-label="Sản phẩm">
                                 <div className="product-cell">
                                   <ProductArt product={p} small />
                                   <div>
@@ -1327,12 +1338,12 @@ export default function Manager() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="muted">{p.sku}</td>
-                              <td className="money">{money(p.price)}</td>
-                              <td className="money muted">
+                              <td className="muted" data-label="SKU">{p.sku}</td>
+                              <td className="money" data-label="Giá bán">{money(p.price)}</td>
+                              <td className="money muted" data-label="Giá vốn">
                                 {money(p.cost || 0)}
                               </td>
-                              <td>
+                              <td data-label="Tồn kho">
                                 <span
                                   className={
                                     "badge " + (p.stock <= 5 ? "warning" : "")
@@ -1341,7 +1352,7 @@ export default function Manager() {
                                   {p.stock}
                                 </span>
                               </td>
-                              <td>
+                              <td data-label="Thao tác">
                                 <div className="row-actions">
                                   <button
                                     className="text-button"
@@ -1529,10 +1540,10 @@ export default function Manager() {
                           <tbody>
                             {data.expenses.map((e) => (
                               <tr key={e.id}>
-                                <td>{e.note}</td>
-                                <td>{e.category}</td>
-                                <td>{date(e.created_at)}</td>
-                                <td className="right money">
+                                <td data-label="Nội dung">{e.note}</td>
+                                <td data-label="Danh mục">{e.category}</td>
+                                <td data-label="Thời gian">{date(e.created_at)}</td>
+                                <td className="right money" data-label="Số tiền">
                                   {money(e.amount)}
                                 </td>
                               </tr>
@@ -1633,10 +1644,10 @@ export default function Manager() {
                   )}
 
                   <div style={{ display: "flex", gap: "10px", marginTop: "24px", flexWrap: "wrap" }}>
-                    <button className="secondary" style={{ flex: 1 }} onClick={() => setModal("change-pin")}>
+                    <button className="secondary" style={{ flex: "1 1 140px" }} onClick={() => setModal("change-pin")}>
                       Đổi mã PIN
                     </button>
-                    <button className="primary" style={{ flex: 1, background: "var(--danger)", color: "white", borderColor: "var(--danger)" }} onClick={switchProfile}>
+                    <button className="primary" style={{ flex: "1 1 140px", background: "var(--danger)", color: "white", borderColor: "var(--danger)" }} onClick={switchProfile}>
                       <LogOut size={16} style={{ marginRight: 6 }} /> Đăng xuất
                     </button>
                   </div>
@@ -1667,14 +1678,18 @@ export default function Manager() {
       {receipt && (
         <Modal title="Chi tiết đơn hàng" close={() => setReceipt(null)}>
           <div className="receipt" id="receipt">
-            <h2>{data.settings.name}</h2>
-            <p>{data.settings.address}</p>
-            <p>{data.settings.phone}</p>
-            <hr />
-            <h3>{receipt.number}</h3>
-            {receipt.sync && <p>ĐÃ LƯU TRÊN THIẾT BỊ · CHỜ MÁY CHỦ XÁC NHẬN</p>}
-            <p>{date(receipt.created_at)}</p>
-            {receipt.status === "cancelled" && <p>ĐÃ HỦY · {receipt.reason}</p>}
+            <div className="receipt-header">
+              <h2>{data.settings.name}</h2>
+              <p>{data.settings.address}</p>
+              <p>{data.settings.phone}</p>
+            </div>
+            <div className="receipt-divider" />
+            <div className="receipt-meta">
+              <h3>{receipt.number}</h3>
+              {receipt.sync && <p className="sync-warn">ĐÃ LƯU TRÊN THIẾT BỊ · CHỜ MÁY CHỦ XÁC NHẬN</p>}
+              <p>{date(receipt.created_at)}</p>
+              {receipt.status === "cancelled" && <p className="cancel-warn">ĐÃ HỦY · {receipt.reason}</p>}
+            </div>
             {receipt.lines.map((l) => (
               <div className="receipt-line" key={l.product_id}>
                 <span>
@@ -1686,7 +1701,7 @@ export default function Manager() {
                 <strong>{money(l.price * l.quantity)}</strong>
               </div>
             ))}
-            <hr />
+            <div className="receipt-divider" />
             {receipt.discount > 0 && (
               <div className="summary-row">
                 <span>Giảm giá</span>
@@ -1725,8 +1740,8 @@ export default function Manager() {
                 <span>{receipt.note}</span>
               </div>
             )}
-            <hr />
-            <p>{data.settings.receipt_footer}</p>
+            <div className="receipt-divider" />
+            <p className="receipt-footer">{data.settings.receipt_footer}</p>
           </div>
           <div className="modal-actions">
             <button className="primary" onClick={() => window.print()}>
@@ -2026,6 +2041,22 @@ export default function Manager() {
         </Modal>
       )}
 
+      {modal === "qr" && (
+        <Modal title="Thanh toán chuyển khoản" close={() => setModal(null)}>
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            <img 
+              src="/qr-code-transfer.jpg" 
+              alt="QR Code Chuyển khoản" 
+              style={{ width: "100%", maxWidth: "340px", borderRadius: "12px", border: "1px solid var(--border)", margin: "0 auto", display: "block" }} 
+            />
+            <p style={{ marginTop: 24, fontSize: 14, color: "var(--text)" }}>Vui lòng kiểm tra kỹ giao dịch trước khi xác nhận đơn hàng.</p>
+            <button className="primary" onClick={() => setModal(null)} style={{ marginTop: 20, width: "100%", minHeight: 48, fontSize: 16 }}>
+              Đã nhận được tiền
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {!receipt && lines.length > 0 && (
         <style dangerouslySetInnerHTML={{ __html: `
           @media screen {
@@ -2039,12 +2070,16 @@ export default function Manager() {
       )}
       {!receipt && lines.length > 0 && (
         <div className="receipt" id="pre-bill">
-          <h2>{data?.settings.name}</h2>
-          <p>{data?.settings.address}</p>
-          <p>{data?.settings.phone}</p>
-          <hr />
-          <h3>PHIẾU TẠM TÍNH</h3>
-          <p>{date(new Date().toISOString())}</p>
+          <div className="receipt-header">
+            <h2>{data?.settings.name}</h2>
+            <p>{data?.settings.address}</p>
+            <p>{data?.settings.phone}</p>
+          </div>
+          <div className="receipt-divider" />
+          <div className="receipt-meta">
+            <h3>PHIẾU TẠM TÍNH</h3>
+            <p>{date(new Date().toISOString())}</p>
+          </div>
           {lines.map((l) => (
             <div className="receipt-line" key={l.product.id}>
               <span>
@@ -2290,7 +2325,13 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   };
   
   useEffect(() => {
-    loadProfiles();
+    let mounted = true;
+    Promise.resolve().then(() => {
+      if (mounted) loadProfiles();
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
   async function enterPin(value: string) {
     if (!selected) return;

@@ -744,6 +744,10 @@ h1 {
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
 }
 .product-card:hover .add-product {
   opacity: 1;
@@ -1507,43 +1511,88 @@ tbody tr:hover td:first-child {
   margin-top: 20px;
 }
 .receipt {
-  padding: 20px;
+  padding: 32px 24px;
   background: #fff;
-  color: #181818;
-  font-family: ui-monospace, Consolas, monospace;
+  color: #111;
+  font-family: 'Courier New', Courier, monospace;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  position: relative;
+  border-radius: var(--radius-sm);
 }
-.receipt h2,
-.receipt h3,
-.receipt p {
+.receipt-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.receipt-header p, .receipt-meta p {
+  font-size: 12px;
+  color: #555;
+  margin: 4px 0;
+}
+.receipt-meta h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.receipt-header,
+.receipt-meta,
+.receipt-footer {
   text-align: center;
 }
-.receipt p {
-  font-size: 11px;
-  margin: 6px 0;
+.sync-warn, .cancel-warn {
+  font-weight: 600;
+  padding: 4px;
+  border: 1px dashed currentColor;
+  display: inline-block;
+  margin: 8px auto !important;
+}
+.cancel-warn { color: #d32f2f; }
+.sync-warn { color: #f57c00; }
+.receipt-divider {
+  border-top: 1px dashed #ccc;
+  margin: 20px 0;
+  position: relative;
 }
 .receipt-line {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin: 15px 0;
-  font-size: 11px;
+  margin: 12px 0;
+  font-size: 13px;
+  font-weight: 500;
 }
 .receipt-line small {
   display: block;
-  color: #555;
-  font-size: 9px;
+  color: #666;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
 }
 .receipt .summary-row {
-  color: #555;
+  color: #666;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
 }
 .receipt .summary-row span:last-child {
-  color: #181818;
+  color: #111;
+  font-weight: 500;
 }
-.receipt .total-row strong:last-child {
+.receipt .total-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+.receipt .total-row strong {
   font-size: 18px;
+  font-weight: 700;
 }
-.receipt hr {
-  border-color: #ddd;
+.receipt .receipt-footer {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
 }
 .queue-item {
   padding: 20px 0;
@@ -2234,6 +2283,49 @@ tbody tr:hover td:first-child {
   button:active:not(:disabled),
   .product-card:hover:not(:disabled) {
     transform: none;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Responsive Tables */
+  table {
+    border: 0;
+  }
+  table thead {
+    display: none;
+  }
+  table tr {
+    display: block;
+    margin-bottom: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0 !important;
+    text-align: right !important;
+  }
+  table td:last-child {
+    border-bottom: 0;
+  }
+  table td::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: var(--muted);
+    text-align: left;
+    margin-right: 12px;
+  }
+  /* Remove money alignment on mobile since flex takes over */
+  table td.money, table td.right {
+    text-align: right !important;
+  }
+  .table-wrap {
+    overflow: visible;
   }
 }
 @media print {
