@@ -76,7 +76,6 @@ export const settingsSchema = z.object({
   address: z.string().max(200),
   phone: z.string().max(30),
   receipt_footer: z.string().max(300),
-  idle_minutes: z.number().int().min(1).max(43200), // up to 30 days
   allow_staff_cancel: z.boolean(),
   theme: z.enum(["dark", "light"]),
   bonus_percent: z.number().min(0).max(100),

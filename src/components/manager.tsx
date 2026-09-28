@@ -293,28 +293,7 @@ export default function Manager() {
       clearInterval(timer);
     };
   }, [data, online, queue.length]);
-  useEffect(() => {
-    if (!data) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const reset = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        lock().finally(() => {
-          setData(null);
-          setCart({});
-          router.push("/profiles");
-        });
-      }, (data.settings?.idle_minutes ?? 15) * 60000);
-    };
-    reset();
-    window.addEventListener("pointerdown", reset);
-    window.addEventListener("keydown", reset);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("pointerdown", reset);
-      window.removeEventListener("keydown", reset);
-    };
-  }, [data, router]);
+  // Idle timer completely removed by user request
   useEffect(() => {
     if (notice) {
       const timer = setTimeout(() => setNotice(""), 4000);
@@ -1815,7 +1794,7 @@ export default function Manager() {
           </form>
         </Modal>
       )}
-      {modal && modal !== "queue" && (
+      {modal && modal !== "queue" && modal !== "qr" && (
         <Modal
           title={
             {
@@ -2152,7 +2131,6 @@ function SettingsForm({
             address: f.get("address"),
             phone: f.get("phone"),
             receipt_footer: f.get("receipt_footer"),
-            idle_minutes: Number(f.get("idle_minutes")),
             bonus_percent: Number(f.get("bonus_percent")),
             theme: f.get("theme"),
             allow_staff_cancel: f.get("allow_staff_cancel") === "on",
@@ -2179,15 +2157,6 @@ function SettingsForm({
         <hr />
         <h2>Vận hành & bảo mật</h2>
         <div className="form-grid">
-          <Field label="Tự khóa sau (phút)">
-            <input
-              name="idle_minutes"
-              type="number"
-              min="1"
-              max="43200"
-              defaultValue={data.settings.idle_minutes}
-            />
-          </Field>
           <Field label="Thưởng doanh số (%)">
             <input
               name="bonus_percent"

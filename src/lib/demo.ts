@@ -57,7 +57,6 @@ export function seed(): Snapshot {
       address: "Vietnam · Everyday essentials",
       phone: "",
       receipt_footer: "Cảm ơn đã chọn Inside Out. Hẹn gặp lại!",
-      idle_minutes: 10,
       allow_staff_cancel: false,
       theme: "dark",
       bonus_percent: 1,

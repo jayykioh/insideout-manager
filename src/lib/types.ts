@@ -86,7 +86,6 @@ export type Settings = {
   address: string;
   phone: string;
   receipt_footer: string;
-  idle_minutes: number;
   allow_staff_cancel: boolean;
   theme: "dark" | "light";
   bonus_percent: number;
