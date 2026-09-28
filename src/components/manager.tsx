@@ -22,6 +22,8 @@ const Reports = dynamic(() => import("./reports"), {
 import {
   ArrowUpRight,
   ArrowLeft,
+  Bell,
+  BellOff,
   Check,
   ChevronDown,
   ChevronRight,
@@ -77,6 +79,17 @@ import {
   syncQueue,
   type Pending,
 } from "@/lib/client";
+import {
+  getPermission,
+  requestPermission,
+  notifyCheckout,
+  notifyCancel,
+  notifyShiftOpen,
+  notifyShiftClose,
+  notifyExpense,
+  notifySync,
+  type NotifPermission,
+} from "@/lib/notifications";
 
 const navigation = [
   { href: "/pos", label: "Bán hàng", icon: ShoppingBag },
@@ -132,6 +145,7 @@ export default function Manager() {
   const [online, setOnline] = useState(true);
   const [queue, setQueue] = useState<Pending[]>([]);
   const [busy, setBusy] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotifPermission>("default");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tất cả");
@@ -165,6 +179,14 @@ export default function Manager() {
     const timer = setInterval(() => setClock(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
+  // Track notification permission on mount
+  useEffect(() => {
+    setNotifPerm(getPermission());
+  }, []);
+  const handleRequestNotif = async () => {
+    const perm = await requestPermission();
+    setNotifPerm(perm);
+  };
   const reload = async () => {
     const s = await snapshot();
     setData(s);
@@ -246,11 +268,16 @@ export default function Manager() {
     };
     const synced = (event: MessageEvent) => {
       if (event.data?.type === "OUTBOX_SYNCED") {
+        const prevCount = queue.length;
         snapshot()
           .then(setData)
           .catch(() => {});
         pending()
-          .then(setQueue)
+          .then((q) => {
+            setQueue(q);
+            const synced = prevCount - q.length;
+            if (synced > 0) notifySync(synced);
+          })
           .catch(() => {});
       }
     };
@@ -300,6 +327,27 @@ export default function Manager() {
       await reload();
       setModal(null);
       setNotice("Đã lưu thay đổi.");
+      // Fire relevant notifications
+      if (command.type === "open_shift") notifyShiftOpen();
+      if (command.type === "close_shift") {
+        const shiftSales = data
+          ? data.orders
+              .filter((o) => o.status === "completed" && o.shift_id === (command.payload as {id?: string}).id)
+              .reduce((s, o) => s + o.total, 0)
+          : 0;
+        notifyShiftClose(money(shiftSales));
+      }
+      if (command.type === "expense") {
+        notifyExpense(
+          String((command.payload as {note?: string}).note ?? ""),
+          money(Number((command.payload as {amount?: number}).amount ?? 0)),
+        );
+      }
+      if (command.type === "cancel") {
+        const orderId = String((command.payload as {id?: string}).id ?? "");
+        const order = data?.orders.find((o) => o.id === orderId);
+        notifyCancel(order?.number ?? orderId.slice(0, 8).toUpperCase());
+      }
       return true;
     } catch (e) {
       setError((e as Error).message);
@@ -461,6 +509,7 @@ export default function Manager() {
           if (!delivered) {
             pending().then(setQueue);
             setNotice("Đơn đã lưu trên thiết bị, chờ đồng bộ.");
+            notifyCheckout(money(total), paymentNames[payload.payment_method]);
           } else {
             setData((prev) => {
               if (!prev) return prev;
@@ -475,6 +524,7 @@ export default function Manager() {
               prev?.id === id ? { ...prev, sync: undefined } : prev
             );
             setNotice("Thanh toán thành công.");
+            notifyCheckout(money(total), paymentNames[payload.payment_method]);
             reload().catch(console.error);
           }
         })
@@ -786,6 +836,24 @@ export default function Manager() {
                     : "Đã đồng bộ"}
               </span>
             </button>
+            {notifPerm !== "unsupported" && notifPerm !== "granted" && (
+              <button
+                className="notif-request-btn"
+                onClick={handleRequestNotif}
+                aria-label="Bật thông báo"
+                title={notifPerm === "denied" ? "Thông báo bị chặn - hãy bật lại trong trình duyệt" : "Bật thông báo"}
+              >
+                <Bell size={16} />
+                <span className="today-label">
+                  {notifPerm === "denied" ? "Thông báo bị chặn" : "Bật thông báo"}
+                </span>
+              </button>
+            )}
+            {notifPerm === "granted" && (
+              <IconButton label="Thông báo đã bật" onClick={() => {}}>
+                <Bell size={18} style={{ color: "var(--success)" }} />
+              </IconButton>
+            )}
             <IconButton label="Đổi giao diện" onClick={toggleTheme}>
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </IconButton>
@@ -1348,16 +1416,47 @@ export default function Manager() {
                           {data.settings.bonus_percent}% doanh số. Chưa phê
                           duyệt.
                         </p>
-                        <button
-                          className="secondary full"
-                          onClick={() => {
-                            setEditing(m);
-                            setModal("member");
-                          }}
-                        >
-                          Thông tin nhân viên
-                          <ChevronRight size={15} />
-                        </button>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                          <button
+                            className="secondary full"
+                            onClick={() => {
+                              setEditing(m);
+                              setModal("member");
+                            }}
+                          >
+                            Thông tin nhân viên
+                            <ChevronRight size={15} />
+                          </button>
+                          {m.id !== data.user.id && (
+                            <button
+                              className="danger-button full"
+                              disabled={busy}
+                              onClick={() =>
+                                setDialog({
+                                  title: "Xóa nhân viên",
+                                  message: `Bạn có chắc chắn muốn xóa ${m.name}? Hành động này không thể hoàn tác. Toàn bộ dữ liệu đăng nhập và PIN của nhân viên này sẽ bị xóa vĩnh viễn.`,
+                                  actionLabel: "Xóa vĩnh viễn",
+                                  action: async () => {
+                                    setBusy(true);
+                                    setError("");
+                                    try {
+                                      const res = await request("staff/delete", { id: m.id });
+                                      await reload();
+                                      setNotice(`Đã xóa nhân viên ${res.name ?? m.name}.`);
+                                    } catch (e) {
+                                      setError((e as Error).message);
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  },
+                                })
+                              }
+                            >
+                              <Trash2 size={15} />
+                              Xóa nhân viên
+                            </button>
+                          )}
+                        </div>
                       </section>
                     );
                   })}
@@ -1460,7 +1559,7 @@ export default function Manager() {
                     <h2 style={{ margin: 0 }}>{data.user.name}</h2>
                     <span className="badge">{admin ? "Quản lý" : "Nhân viên"}</span>
                   </div>
-                  
+
                   <div className="form-grid" style={{ marginTop: 40, textAlign: "left", gridTemplateColumns: "1fr" }}>
                     <Field label="Tên hiển thị">
                       <input defaultValue={data.user.name} readOnly disabled />
@@ -1470,7 +1569,47 @@ export default function Manager() {
                     </Field>
                   </div>
 
-                  <div style={{ display: "flex", gap: "10px", marginTop: "40px", flexWrap: "wrap" }}>
+                  {/* Notification permission card */}
+                  {notifPerm !== "unsupported" && (
+                    <div className="notif-profile-card">
+                      <div className="notif-profile-icon">
+                        {notifPerm === "granted" ? (
+                          <Bell size={22} style={{ color: "var(--success)" }} />
+                        ) : notifPerm === "denied" ? (
+                          <BellOff size={22} style={{ color: "var(--danger)" }} />
+                        ) : (
+                          <Bell size={22} style={{ color: "var(--accent)" }} />
+                        )}
+                      </div>
+                      <div className="notif-profile-body">
+                        <strong>
+                          {notifPerm === "granted"
+                            ? "Thông báo đã bật"
+                            : notifPerm === "denied"
+                              ? "Thông báo bị chặn"
+                              : "Bật thông báo"}
+                        </strong>
+                        <p>
+                          {notifPerm === "granted"
+                            ? "Bạn sẽ nhận thông báo cho mỗi giao dịch quan trọng."
+                            : notifPerm === "denied"
+                              ? "Hãy vào Cài đặt trình duyệt → Quyền để bật lại."
+                              : "Nhận thông báo tức thì cho mỗi đơn hàng, ca làm và đồng bộ dữ liệu."}
+                        </p>
+                      </div>
+                      {notifPerm !== "granted" && notifPerm !== "denied" && (
+                        <button
+                          className="primary"
+                          style={{ flexShrink: 0 }}
+                          onClick={handleRequestNotif}
+                        >
+                          Bật
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "24px", flexWrap: "wrap" }}>
                     <button className="secondary" style={{ flex: 1 }} onClick={() => setModal("change-pin")}>
                       Đổi mã PIN
                     </button>

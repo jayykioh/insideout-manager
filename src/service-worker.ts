@@ -25,3 +25,14 @@ async function flush(){
 }
 self.addEventListener('sync',((event:Event & {tag:string;waitUntil:(promise:Promise<unknown>)=>void})=>{if(event.tag==='insideout-orders')event.waitUntil(flush());}) as EventListener);
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();});
+self.addEventListener('notificationclick',(event:NotificationEvent)=>{
+  event.notification.close();
+  const url:string=event.notification.data?.url||'/';
+  event.waitUntil(
+    self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{
+      const match=clients.find(c=>c.url===self.location.origin+url&&'focus' in c);
+      if(match)return (match as WindowClient).focus();
+      return self.clients.openWindow(url);
+    })
+  );
+});

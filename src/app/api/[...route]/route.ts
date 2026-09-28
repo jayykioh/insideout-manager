@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import {operationsRoute} from '@/lib/operations-server';
+import { operationsRoute } from '@/lib/operations-server';
 import { createHash, randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { z } from "zod";
@@ -43,7 +43,7 @@ async function handler(
         !origin ||
         (origin !== reqOrigin &&
           origin.replace("127.0.0.1", "localhost") !==
-            reqOrigin.replace("127.0.0.1", "localhost"))
+          reqOrigin.replace("127.0.0.1", "localhost"))
       )
         return okError("Yêu cầu không hợp lệ.", 403);
     }
@@ -67,13 +67,15 @@ async function handler(
         .parse(p);
       const d = await loginShop();
       const service = supabase(undefined, true);
+      // Start hashing PIN immediately — runs concurrently with createUser
+      const hashPromise = hash(input.pin, 10);
       const created = await service.auth.admin.createUser({
         email: `${randomBytes(16).toString("hex")}@insideout.local`,
         password: randomBytes(32).toString("hex"),
         email_confirm: true,
       });
       if (created.error) throw Error("Không tạo được tài khoản.");
-      
+
       const memberErr = await service.from("members").insert({
         id: created.data.user.id,
         shop_id: d.shop_id,
@@ -88,7 +90,7 @@ async function handler(
       const pinErr = await service.from("staff_pins").insert({
         user_id: created.data.user.id,
         shop_id: d.shop_id,
-        hash: await hash(input.pin, 12),
+        hash: await hashPromise,
       });
       if (pinErr.error) {
         await service.auth.admin.deleteUser(created.data.user.id);
@@ -102,23 +104,15 @@ async function handler(
         .parse(p);
       const d = await loginShop();
       const service = supabase(undefined, true);
-      const { data: member, error: memberError } = await service
-        .from("members")
-        .select("id,shop_id")
-        .eq("id", input.id)
-        .eq("shop_id", d.shop_id)
-        .eq("active", true)
-        .single();
-      if (memberError || !member) throw Error("Hồ sơ không còn hoạt động.");
+      // verify_profile_pin already checks member existence + active — skip redundant member query
       const result = await service.rpc("verify_profile_pin", {
         p_shop: d.shop_id,
         p_user: input.id,
         p_pin: input.pin,
       });
       if (result.error || !result.data?.ok)
-        throw Error(
-          result.data?.message || "PIN chưa đúng hoặc hồ sơ đã bị khóa.",
-        );
+        throw Error(result.data?.message || "PIN chưa đúng hoặc hồ sơ đã bị khóa.");
+      // getUserById + generateLink are sequential by Supabase design
       const { data: userData, error: userError } =
         await service.auth.admin.getUserById(input.id);
       if (userError || !userData.user.email)
@@ -139,7 +133,6 @@ async function handler(
       )
         throw Error("Không xác minh được phiên.");
       await saveSession(verified.data.session);
-
       return ok({ id: input.id });
     }
     if (route === "auth/change-pin" && req.method === "POST") {
@@ -153,6 +146,8 @@ async function handler(
       if (!auth) throw Error("Không có quyền.");
       const d = await loginShop();
       const service = supabase(undefined, true);
+      // Start hashing new PIN concurrently with PIN verification
+      const newHashPromise = hash(input.new_pin, 10);
       const result = await service.rpc("verify_profile_pin", {
         p_shop: d.shop_id,
         p_user: auth.user.id,
@@ -160,10 +155,9 @@ async function handler(
       });
       if (result.error || !result.data?.ok)
         throw Error("Mã PIN hiện tại không đúng.");
-      const newHash = await hash(input.new_pin, 12);
       const { error } = await service
         .from("staff_pins")
-        .update({ hash: newHash })
+        .update({ hash: await newHashPromise })
         .eq("user_id", auth.user.id)
         .eq("shop_id", d.shop_id);
       if (error) throw Error("Không thể cập nhật mã PIN.");
@@ -179,7 +173,7 @@ async function handler(
       return ok({ ok: true });
     }
     const { client, member, user } = await authenticated();
-    const extra=await operationsRoute(route,req,p,{client,member,user});if(extra)return extra;
+    const extra = await operationsRoute(route, req, p, { client, member, user }); if (extra) return extra;
     if (route === "state" && req.method === "GET") {
       const { data, error } = await client.rpc("manager_state");
       if (error) throw error;
@@ -208,7 +202,9 @@ async function handler(
             role: z.enum(["admin", "staff"]),
           })
           .parse(command.payload);
+        // Start hashing PIN concurrently with createUser network call
         const service = supabase(undefined, true);
+        const hashPromise = hash(input.pin, 10);
         const created = await service.auth.admin.createUser({
           email: `${randomBytes(16).toString("hex")}@insideout.local`,
           password: randomBytes(32).toString("hex"),
@@ -223,7 +219,7 @@ async function handler(
           p_name: input.name,
           p_role: input.role,
           p_rate: input.hourly_rate,
-          p_hash: await hash(input.pin, 12),
+          p_hash: await hashPromise,
         });
         if (memberResult.error) {
           await service.auth.admin.deleteUser(created.data.user.id);

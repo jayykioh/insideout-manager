@@ -2277,3 +2277,81 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+
+/* ── PWA Notification Bell ─────────────────────────────────────────────── */
+.notif-request-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+  transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+.notif-request-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+@media (max-width: 700px) {
+  .notif-request-btn > span {
+    display: none;
+  }
+  .notif-request-btn {
+    min-width: 44px;
+    justify-content: center;
+    padding: 0 10px;
+  }
+}
+
+/* ── Notification card on Profile page ─────────────────────────────────── */
+.notif-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--raised);
+  text-align: left;
+  animation: fade-in-up 250ms var(--ease-out) forwards;
+}
+.notif-profile-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.notif-profile-body {
+  flex: 1;
+  min-width: 0;
+}
+.notif-profile-body strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.notif-profile-body p {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .notif-profile-card {
+    flex-wrap: wrap;
+  }
+  .notif-profile-card > button {
+    width: 100%;
+  }
+}

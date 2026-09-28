@@ -9,7 +9,7 @@ type Context={client:SupabaseClient;user:User;member:{id:string;shop_id:string;r
 const json=(value:unknown)=>NextResponse.json(value,{headers:{'Cache-Control':'no-store'}});
 export async function operationsRoute(route:string,req:NextRequest,p:Record<string,unknown>,ctx:Context):Promise<NextResponse|null>{
  const {client,user,member}=ctx;
- if(!['devices','security/pin','payroll/preview','assets','backup'].includes(route))return null;
+ if(!['devices','security/pin','payroll/preview','assets','backup','staff/delete'].includes(route))return null;
  if(member.role!=='admin')throw Error('FORBIDDEN');
  if(route==='devices'&&req.method==='GET'){const {data,error}=await supabase(undefined,true).from('device_sessions').select('id,label,expires_at,revoked_at').eq('shop_id',member.shop_id).order('expires_at',{ascending:false});if(error)throw error;return json(data);}
  if(route==='security/pin'&&req.method==='POST'){
@@ -39,6 +39,41 @@ export async function operationsRoute(route:string,req:NextRequest,p:Record<stri
   const response=json({schema_version:2,exported_at:new Date().toISOString(),shop_id:member.shop_id,data});
   await supabase(undefined,true).from('audit_logs').insert({shop_id:member.shop_id,actor_id:user.id,action:'export',detail:'Operational JSON export'});
   response.headers.set('Content-Disposition','attachment; filename="insideout-export.json"');return response;
+ }
+ if(route==='staff/delete'&&req.method==='POST'){
+  const input=z.object({id:z.uuid()}).parse(p);
+  if(input.id===user.id)throw Error('Không thể tự xóa tài khoản của mình.');
+  const service=supabase(undefined,true);
+
+  // 1. Verify target + check orders + check shifts — all 3 queries in parallel
+  const [targetRes,orderRes,shiftRes]=await Promise.all([
+    service.from('members').select('id,name').eq('id',input.id).eq('shop_id',member.shop_id).single(),
+    service.from('orders').select('id',{count:'exact',head:true}).eq('shop_id',member.shop_id).eq('user_id',input.id),
+    service.from('shifts').select('id',{count:'exact',head:true}).eq('shop_id',member.shop_id).eq('user_id',input.id),
+  ]);
+  if(targetRes.error||!targetRes.data)throw Error('Không tìm thấy nhân viên trong cửa hàng này.');
+  const target=targetRes.data;
+  if(orderRes.count&&orderRes.count>0)
+    throw Error(`Nhân viên ${target.name} có ${orderRes.count} đơn hàng trong lịch sử. Hãy vô hiệu hóa tài khoản thay vì xóa để giữ dữ liệu tài chính.`);
+  if(shiftRes.count&&shiftRes.count>0)
+    throw Error(`Nhân viên ${target.name} có ${shiftRes.count} ca làm việc. Hãy vô hiệu hóa tài khoản thay vì xóa để giữ dữ liệu chấm công.`);
+
+  // 2. Clean public schema rows in parallel
+  await Promise.all([
+    service.from('staff_pins').delete().eq('user_id',input.id),
+    service.from('members').delete().eq('id',input.id).eq('shop_id',member.shop_id),
+  ]);
+
+  // 3. Delete auth user — FK migration ensures nothing blocks this
+  const {error:delErr}=await service.auth.admin.deleteUser(input.id);
+  if(delErr)throw Error('Không thể xóa tài khoản xác thực: '+delErr.message);
+
+  // Fire-and-forget audit log (non-blocking)
+  void service.from('audit_logs').insert({
+    shop_id:member.shop_id,actor_id:user.id,
+    action:'delete_staff',detail:target.name+' ('+input.id+')'
+  });
+  return json({ok:true,name:target.name});
  }
  return null;
 }
