@@ -2184,7 +2184,7 @@ function SettingsForm({
               name="idle_minutes"
               type="number"
               min="1"
-              max="120"
+              max="43200"
               defaultValue={data.settings.idle_minutes}
             />
           </Field>

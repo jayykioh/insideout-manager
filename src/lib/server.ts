@@ -48,7 +48,7 @@ export async function saveSession(session: Session) {
   });
   jar.set("io-refresh", session.refresh_token, {
     ...options,
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 }
 
