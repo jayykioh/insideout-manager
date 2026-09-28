@@ -1384,6 +1384,16 @@ tbody tr:hover td:first-child {
   flex-direction: column;
   gap: 18px;
 }
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1433,11 +1443,11 @@ tbody tr:hover td:first-child {
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
   }
 }
 .modal-header {

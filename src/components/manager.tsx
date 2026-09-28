@@ -1785,7 +1785,7 @@ export default function Manager() {
               <input name="reason" required autoFocus placeholder="VD: Khách đổi ý, Nhập sai món..." />
             </div>
             <div className="modal-actions">
-              <button type="button" onClick={() => setCancelingOrder(null)}>
+              <button className="secondary" type="button" onClick={() => setCancelingOrder(null)}>
                 Quay lại
               </button>
               <button className="danger-button" type="submit" disabled={busy}>
