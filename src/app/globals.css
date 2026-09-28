@@ -2058,13 +2058,18 @@ tbody tr:hover td:first-child {
   .mobile-cart-toggle {
     display: flex;
     position: fixed;
-    bottom: 85px;
+    bottom: calc(85px + env(safe-area-inset-bottom));
     left: 18px;
     right: 18px;
     width: calc(100% - 36px);
     z-index: 25;
-    box-shadow: none; border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border: none;
+    border-radius: 99px;
     justify-content: flex-start;
+  }
+  :root[data-theme="light"] .mobile-cart-toggle {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
   }
   .mobile-cart-toggle strong {
     margin-left: auto;
@@ -2072,10 +2077,10 @@ tbody tr:hover td:first-child {
   .mobile-open {
     display: flex;
     position: fixed;
-    inset: 0 0 72px;
+    inset: 0;
     border: 0;
-    border-radius: var(--radius-sm);
-    z-index: 30;
+    border-radius: 0;
+    z-index: 50;
     min-height: 0;
     overflow: auto;
     padding-bottom: env(safe-area-inset-bottom);
@@ -2087,9 +2092,13 @@ tbody tr:hover td:first-child {
   }
   .mobile-close {
     display: flex;
-    padding: 14px 20px;
-    min-height: 50px;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
+    min-height: calc(50px + env(safe-area-inset-top));
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
   }
   .cart-lines {
     max-height: none;

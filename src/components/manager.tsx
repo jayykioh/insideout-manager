@@ -148,6 +148,7 @@ export default function Manager() {
     | "shift-open"
     | "shift-close"
     | "queue"
+    | "change-pin"
     | null
   >(null);
   const [editing, setEditing] = useState<Product | Member | null>(null);
@@ -413,68 +414,71 @@ export default function Manager() {
         cashAmount > total
       )
         throw Error("Số tiền mặt phải nằm trong tổng giá trị đơn.");
-      const delivered = await submitCheckout(data!, payload);
-      if (!delivered) {
-        setQueue(await pending());
-        setReceipt({
-          id,
-          number: "LOCAL-" + id.slice(0, 8).toUpperCase(),
-          user_id: data!.user.id,
-          shift_id: current?.id,
-          created_at: payload.occurred_at,
-          total,
-          cash: payload.cash,
-          transfer: payload.transfer,
-          card: payload.card,
-          payment_method: payload.payment_method,
-          discount: payload.discount,
-          note: payload.note,
-          status: "completed",
-          sync: "pending",
-          lines: lines.map(({ product, quantity }) => ({
-            product_id: product.id,
-            name: product.name,
-            variant: product.variant,
-            price: product.price,
-            quantity,
-          })),
+
+      const orderData: Order = {
+        id,
+        number: "POS-" + id.slice(0, 8).toUpperCase(),
+        user_id: data!.user.id,
+        shift_id: current?.id,
+        created_at: payload.occurred_at,
+        total,
+        cash: payload.cash,
+        transfer: payload.transfer,
+        card: payload.card,
+        payment_method: payload.payment_method,
+        discount: payload.discount,
+        note: payload.note,
+        status: "completed",
+        sync: "pending",
+        lines: lines.map(({ product, quantity }) => ({
+          product_id: product.id,
+          name: product.name,
+          variant: product.variant,
+          price: product.price,
+          quantity,
+        })),
+      };
+
+      setData((prev) => {
+        if (!prev) return prev;
+        const newProducts = prev.products.map((p) => {
+          const inCart = lines.find((l) => l.product.id === p.id);
+          if (inCart) return { ...p, stock: p.stock - inCart.quantity };
+          return p;
         });
-        setNotice("Đơn đã lưu trên thiết bị, chờ đồng bộ.");
-      } else {
-        const orderData = {
-          id,
-          number: "POS-" + id.slice(0, 8).toUpperCase(),
-          user_id: data!.user.id,
-          shift_id: current?.id,
-          created_at: payload.occurred_at,
-          total,
-          cash: payload.cash,
-          transfer: payload.transfer,
-          card: payload.card,
-          payment_method: payload.payment_method,
-          discount: payload.discount,
-          note: payload.note,
-          status: "completed",
-          sync: "synced",
-          lines: lines.map(({ product, quantity }) => ({
-            product_id: product.id,
-            name: product.name,
-            variant: product.variant,
-            price: product.price,
-            quantity,
-          })),
-        };
-        setData((prev) => prev ? { ...prev, orders: [orderData as any, ...prev.orders] } : prev);
-        setReceipt(orderData as any);
-        setNotice("Thanh toán thành công.");
-        reload().catch(console.error); // Background sync
-      }
+        return { ...prev, orders: [orderData, ...prev.orders], products: newProducts };
+      });
+      setReceipt(orderData);
       setCart({});
       setDiscount("");
       setNote("");
       setMethod("cash");
       setPayment(false);
       setMobileCart(false);
+
+      submitCheckout(data!, payload)
+        .then((delivered) => {
+          if (!delivered) {
+            pending().then(setQueue);
+            setNotice("Đơn đã lưu trên thiết bị, chờ đồng bộ.");
+          } else {
+            setData((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                orders: prev.orders.map((o) =>
+                  o.id === id ? { ...o, sync: undefined } : o
+                ),
+              };
+            });
+            setReceipt((prev) =>
+              prev?.id === id ? { ...prev, sync: undefined } : prev
+            );
+            setNotice("Thanh toán thành công.");
+            reload().catch(console.error);
+          }
+        })
+        .catch(console.error);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1009,13 +1013,15 @@ export default function Manager() {
                     )}
                     {cartPanel}
                   </aside>
-                  <button
-                    className="mobile-cart-toggle primary"
-                    onClick={() => setMobileCart(true)}
-                  >
-                    <ShoppingBag size={18} />
-                    {itemCount} sản phẩm <strong>{money(total)}</strong>
-                  </button>
+                  {!mobileCart && (
+                    <button
+                      className="mobile-cart-toggle primary"
+                      onClick={() => setMobileCart(true)}
+                    >
+                      <ShoppingBag size={18} />
+                      {itemCount} sản phẩm <strong>{money(total)}</strong>
+                    </button>
+                  )}
                 </div>
               )}
               {path === "/orders" && (
