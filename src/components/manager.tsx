@@ -154,6 +154,7 @@ export default function Manager() {
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<"cash" | "transfer" | "card">("cash");
   const [receipt, setReceipt] = useState<Order | null>(null);
+  const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [modal, setModal] = useState<
     | "product"
     | "stock"
@@ -345,6 +346,16 @@ export default function Manager() {
       }
       if (command.type === "cancel") {
         const orderId = String((command.payload as {id?: string}).id ?? "");
+        const reason = String((command.payload as {reason?: string}).reason ?? "");
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            orders: prev.orders.map((o) =>
+              o.id === orderId ? { ...o, status: "cancelled", reason } : o
+            ),
+          };
+        });
         const order = data?.orders.find((o) => o.id === orderId);
         notifyCancel(order?.number ?? orderId.slice(0, 8).toUpperCase());
       }
@@ -1170,6 +1181,18 @@ export default function Manager() {
                                       ? "Đã hủy"
                                       : "Hoàn thành"}
                                   </span>
+                                  {o.status === "completed" &&
+                                    (admin || data.settings.allow_staff_cancel) && (
+                                      <button
+                                        className="danger-button"
+                                        style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px" }}
+                                        title="Hủy đơn"
+                                        disabled={busy}
+                                        onClick={() => setCancelingOrder(o)}
+                                      >
+                                        Hủy đơn
+                                      </button>
+                                    )}
                                 </td>
                                 <td className="right money">
                                   {money(o.total)}
@@ -1711,21 +1734,13 @@ export default function Manager() {
               In hóa đơn
             </button>
             {receipt.status === "completed" &&
-              !receipt.sync &&
               (admin || data.settings.allow_staff_cancel) && (
                 <button
                   className="danger-button"
                   disabled={busy}
-                  onClick={async () => {
-                    const reason = prompt("Lý do hủy đơn (bắt buộc):");
-                    if (
-                      reason?.trim() &&
-                      (await mutate({
-                        type: "cancel",
-                        payload: { id: receipt.id, reason },
-                      }))
-                    )
-                      setReceipt(null);
+                  onClick={() => {
+                    setReceipt(null);
+                    setCancelingOrder(receipt);
                   }}
                 >
                   Hủy đơn
@@ -1737,6 +1752,52 @@ export default function Manager() {
               {error}
             </p>
           )}
+        </Modal>
+      )}
+      {cancelingOrder && (
+        <Modal
+          title="Hủy đơn hàng"
+          close={() => setCancelingOrder(null)}
+        >
+          <form
+            className="stack-form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const reason = formData.get("reason") as string;
+              if (!reason.trim()) return;
+              if (
+                await mutate({
+                  type: "cancel",
+                  payload: { id: cancelingOrder.id, reason },
+                })
+              ) {
+                setCancelingOrder(null);
+              }
+            }}
+          >
+            <p style={{ lineHeight: 1.5 }}>
+              Bạn đang hủy đơn hàng <strong>{cancelingOrder.number}</strong>.<br />
+              Thao tác này sẽ hoàn lại số lượng tồn kho và gạch bỏ doanh thu.
+            </p>
+            <div className="form-group">
+              <label>Lý do hủy đơn (bắt buộc)</label>
+              <input name="reason" required autoFocus placeholder="VD: Khách đổi ý, Nhập sai món..." />
+            </div>
+            <div className="modal-actions">
+              <button type="button" onClick={() => setCancelingOrder(null)}>
+                Quay lại
+              </button>
+              <button className="danger-button" type="submit" disabled={busy}>
+                Xác nhận Hủy đơn
+              </button>
+            </div>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+          </form>
         </Modal>
       )}
       {modal && modal !== "queue" && (
