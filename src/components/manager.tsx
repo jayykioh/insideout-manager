@@ -35,6 +35,7 @@ import {
   LogOut,
   Minus,
   Plus,
+  Pencil,
   Search,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -141,6 +142,7 @@ export default function Manager() {
   const [busy, setBusy] = useState(false);
   const [notifPerm, setNotifPerm] = useState<NotifPermission>("default");
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tất cả");
 
@@ -360,6 +362,7 @@ export default function Manager() {
     await lock();
     setData(null);
     setCart({});
+    setCustomPrices({});
     router.push("/profiles");
   }
   if (path === "/login" || path === "/profiles")
@@ -385,12 +388,16 @@ export default function Manager() {
     "Quay về bán hàng để tiếp tục.",
   ];
   const lines = Object.entries(cart)
-    .map(([id, quantity]) => ({
-      product: data.products.find((p) => p.id === id)!,
-      quantity,
-    }))
+    .map(([id, quantity]) => {
+      const product = data.products.find((p) => p.id === id)!;
+      return {
+        product,
+        quantity,
+        price: product ? (customPrices[id] ?? product.price) : 0,
+      };
+    })
     .filter((l) => l.product);
-  const subtotal = lines.reduce((s, l) => s + l.product.price * l.quantity, 0);
+  const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
   const discountVal = discount === "" ? 0 : Number(discount);
   const total = subtotal - discountVal;
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
@@ -427,7 +434,7 @@ export default function Manager() {
       lines: lines.map((l) => ({
         product_id: l.product.id,
         quantity: l.quantity,
-        price: l.product.price,
+        price: l.price,
       })),
       cash: cashAmount,
       transfer: transferAmount,
@@ -469,11 +476,11 @@ export default function Manager() {
         note: payload.note,
         status: "completed",
         sync: "pending",
-        lines: lines.map(({ product, quantity }) => ({
+        lines: lines.map(({ product, quantity, price }) => ({
           product_id: product.id,
           name: product.name,
           variant: product.variant,
-          price: product.price,
+          price: price,
           quantity,
         })),
       };
@@ -489,6 +496,7 @@ export default function Manager() {
       });
       setReceipt(orderData);
       setCart({});
+      setCustomPrices({});
       setDiscount("");
       setNote("");
       setMethod("cash");
@@ -619,7 +627,7 @@ export default function Manager() {
               title: "Xóa giỏ hàng",
               message: "Bạn có chắc chắn muốn xóa toàn bộ sản phẩm trong giỏ hàng?",
               actionLabel: "Xóa",
-              action: () => setCart({})
+              action: () => { setCart({}); setCustomPrices({}); }
             });
           }}
         >
@@ -628,7 +636,7 @@ export default function Manager() {
       </div>
       <div className="cart-lines">
         {lines.length ? (
-          lines.map(({ product: p, quantity }) => (
+          lines.map(({ product: p, quantity, price }) => (
             <div className="cart-line" key={p.id}>
               <ProductArt product={p} small />
               <div className="cart-line-info">
@@ -650,7 +658,29 @@ export default function Manager() {
                   </button>
                 </div>
               </div>
-              <span className="money">{money(p.price * quantity)}</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                <span className="money" style={{ fontSize: "10px", marginTop: "2px", whiteSpace: "nowrap" }}>
+                  {money(price * quantity)}
+                </span>
+                {admin && (
+                  <button
+                    className="text-button"
+                    style={{ fontSize: "10px", padding: "4px 0 0", color: "var(--muted)" }}
+                    onClick={() => {
+                      const val = window.prompt(`Sửa giá cho ${p.name}:`, String(price));
+                      if (val !== null) {
+                        const parsed = parseInt(val.replace(/\D/g, ""), 10);
+                        if (!isNaN(parsed) && parsed >= 0) {
+                          setCustomPrices(old => ({ ...old, [p.id]: parsed }));
+                        }
+                      }
+                    }}
+                  >
+                    <Pencil size={10} style={{ marginRight: 3 }} />
+                    Sửa giá
+                  </button>
+                )}
+              </div>
             </div>
           ))
         ) : (
@@ -737,20 +767,20 @@ export default function Manager() {
           </p>
         )}
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+        <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
           <button 
             className="secondary" 
-            style={{ flex: 1, padding: "12px 8px" }} 
+            style={{ flex: 1, padding: "14px 12px", fontSize: "13px" }} 
             onClick={() => {
               window.print();
             }}
             disabled={!itemCount}
           >
-            <Printer size={16} style={{ marginRight: 4 }} /> In tạm tính
+            <Printer size={16} style={{ marginRight: 4 }} /> In bill
           </button>
           <button
             className="primary checkout-button"
-            style={{ flex: 2 }}
+            style={{ flex: 2, padding: "14px 12px" }}
             disabled={!itemCount || busy}
             data-state={busy ? "loading" : undefined}
             onClick={() => {
@@ -1171,16 +1201,26 @@ export default function Manager() {
                                       ? "Đã hủy"
                                       : "Hoàn thành"}
                                   </span>
+                                  {admin && (
+                                    <button
+                                      className="secondary"
+                                      style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px", minHeight: "26px" }}
+                                      title="Sửa đơn"
+                                      onClick={() => setReceipt(o)}
+                                    >
+                                      Sửa
+                                    </button>
+                                  )}
                                   {o.status === "completed" &&
                                     (admin || data.settings.allow_staff_cancel) && (
                                       <button
                                         className="danger-button"
-                                        style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px" }}
+                                        style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px", minHeight: "26px" }}
                                         title="Hủy đơn"
                                         disabled={busy}
                                         onClick={() => setCancelingOrder(o)}
                                       >
-                                        Hủy đơn
+                                        Hủy
                                       </button>
                                     )}
                                 </td>
@@ -1691,6 +1731,32 @@ export default function Manager() {
               <strong>Tổng cộng</strong>
               <strong>{money(receipt.total)}</strong>
             </div>
+            <div className="summary-row" style={{ alignItems: "center" }}>
+              <span>Nhân viên</span>
+              {admin ? (
+                <select 
+                  style={{ width: 'auto', padding: '4px 8px', fontSize: 13, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontWeight: 500, color: 'var(--fg)' }}
+                  value={receipt.user_id}
+                  disabled={busy}
+                  onChange={async (e) => {
+                    const newUserId = e.target.value;
+                    const ok = await mutate({
+                      type: "order_assign",
+                      payload: { id: receipt.id, user_id: newUserId }
+                    });
+                    if (ok) {
+                      setReceipt(prev => prev ? { ...prev, user_id: newUserId } : prev);
+                    }
+                  }}
+                >
+                  {data.members.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
+              )}
+            </div>
             <div className="summary-row">
               <span>Phương thức thanh toán</span>
               <span>{paymentNames[receipt.payment_method]}</span>
@@ -1722,15 +1788,19 @@ export default function Manager() {
             <div className="receipt-divider" />
             <p className="receipt-footer">{data.settings.receipt_footer}</p>
           </div>
-          <div className="modal-actions">
-            <button className="primary" onClick={() => window.print()}>
+          <div className="modal-actions" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="primary" onClick={() => window.print()} style={{ flex: 1, minWidth: '120px' }}>
               <Printer size={17} />
               In hóa đơn
+            </button>
+            <button className="secondary" onClick={() => setReceipt(null)} style={{ flex: 1, minWidth: '120px' }}>
+              Đóng
             </button>
             {receipt.status === "completed" &&
               (admin || data.settings.allow_staff_cancel) && (
                 <button
                   className="danger-button"
+                  style={{ flex: 1, minWidth: '120px' }}
                   disabled={busy}
                   onClick={() => {
                     setReceipt(null);
