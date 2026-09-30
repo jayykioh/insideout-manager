@@ -298,6 +298,16 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
       s.settings = settingsSchema.parse(p);
       audit("settings", "Cập nhật cấu hình");
       break;
+    case "order_assign": {
+      needAdmin();
+      const id = String(p.id);
+      const user_id = String(p.user_id);
+      const order = s.orders.find((x) => x.id === id);
+      if (!order) throw Error("Không tìm thấy đơn hàng.");
+      order.user_id = user_id;
+      audit("order_assign", `${id} -> ${user_id}`);
+      break;
+    }
     default:
       throw Error("Thao tác không được hỗ trợ.");
   }

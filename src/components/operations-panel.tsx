@@ -614,7 +614,7 @@ export default function OperationsPanel({
           <AssetUpload data={data} kind="product" onReload={onReload} />
           <h2>Lịch sử tồn kho</h2>
           <div className="table-wrap" data-table="terminal">
-            <table>
+            <table className="inventory-table">
               <thead>
                 <tr>
                   <th>Thời gian</th>
@@ -626,15 +626,15 @@ export default function OperationsPanel({
               <tbody>
                 {data.movements.slice(0, 100).map((m) => (
                   <tr key={m.id}>
-                    <td>{date(m.created_at)}</td>
-                    <td>
+                    <td data-label="Thời gian">{date(m.created_at)}</td>
+                    <td data-label="Sản phẩm">
                       {data.products.find((p) => p.id === m.product_id)?.name}
                     </td>
-                    <td>
+                    <td data-label="Thay đổi">
                       {m.quantity > 0 ? "+" : ""}
                       {m.quantity}
                     </td>
-                    <td>{m.reason}</td>
+                    <td data-label="Lý do">{m.reason}</td>
                   </tr>
                 ))}
               </tbody>

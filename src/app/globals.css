@@ -1510,15 +1510,84 @@ tbody tr:hover td:first-child {
   justify-content: space-between;
   margin-top: 20px;
 }
-.receipt {
-  padding: 32px 24px;
-  background: #fff;
-  color: #111;
-  font-family: 'Courier New', Courier, monospace;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  position: relative;
-  border-radius: var(--radius-sm);
+#receipt { display: none; }
+
+.order-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
+.order-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.order-details-meta h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+.order-details-meta p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.order-details-status {
+  text-align: right;
+}
+.order-details-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.order-item-info strong {
+  display: block;
+  font-weight: 500;
+  font-size: 14px;
+}
+.order-item-info small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.order-item-price {
+  font-weight: 600;
+}
+.order-details-summary {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.order-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--muted);
+}
+.order-summary-row.total {
+  font-weight: 700;
+  color: var(--fg);
+  font-size: 16px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.receipt { padding: 16px 0; position: relative; }
 .receipt-header h2 {
   font-size: 18px;
   font-weight: 700;
@@ -1527,7 +1596,7 @@ tbody tr:hover td:first-child {
 }
 .receipt-header p, .receipt-meta p {
   font-size: 12px;
-  color: #555;
+  color: var(--muted);
   margin: 4px 0;
 }
 .receipt-meta h3 {
@@ -1550,7 +1619,7 @@ tbody tr:hover td:first-child {
 .cancel-warn { color: #d32f2f; }
 .sync-warn { color: #f57c00; }
 .receipt-divider {
-  border-top: 1px dashed #ccc;
+  border-top: 1px dashed var(--border);
   margin: 20px 0;
   position: relative;
 }
@@ -1564,20 +1633,20 @@ tbody tr:hover td:first-child {
 }
 .receipt-line small {
   display: block;
-  color: #666;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 400;
   margin-top: 2px;
 }
 .receipt .summary-row {
-  color: #666;
+  color: var(--muted);
   font-size: 13px;
   display: flex;
   justify-content: space-between;
   margin: 8px 0;
 }
 .receipt .summary-row span:last-child {
-  color: #111;
+  color: var(--fg);
   font-weight: 500;
 }
 .receipt .total-row {
@@ -1591,7 +1660,7 @@ tbody tr:hover td:first-child {
 }
 .receipt .receipt-footer {
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
   font-style: italic;
 }
 .queue-item {
@@ -2352,8 +2421,332 @@ tbody tr:hover td:first-child {
   .table-wrap {
     overflow: visible;
   }
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  /* Orders Table specific card layout */
+  table.orders-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.orders-table thead {
+    display: none;
+  }
+  table.orders-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.orders-table tr {
+    display: grid;
+    grid-template-areas: 
+      "id total"
+      "time status"
+      "staff actions";
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 16px;
+    margin: 0;
+    align-items: center;
+  }
+  table.orders-table td {
+    display: flex;
+    border: none;
+    padding: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start;
+  }
+  table.orders-table td::before {
+    display: none;
+  }
+  table.orders-table td[data-label="Mã đơn"] {
+    grid-area: id;
+  }
+  table.orders-table td[data-label="Mã đơn"] button {
+    font-size: 1.1em;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0;
+  }
+  table.orders-table td[data-label="Thời gian"] {
+    grid-area: time;
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  table.orders-table td[data-label="Nhân viên"] {
+    grid-area: staff;
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  table.orders-table td[data-label="Tổng cộng"] {
+    grid-area: total;
+    justify-content: flex-end;
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 1.1em;
+  }
+  table.orders-table td[data-label="Trạng thái"] {
+    grid-area: status;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Products Table specific card layout */
+  table.products-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.products-table thead {
+    display: none;
+  }
+  table.products-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.products-table tr {
+    display: grid;
+    grid-template-areas: 
+      "product stock"
+      "sku sku"
+      "price cost"
+      "actions actions";
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 16px;
+    margin: 0;
+    align-items: center;
+  }
+  table.products-table td {
+    display: flex;
+    border: none;
+    padding: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start;
+  }
+  table.products-table td::before {
+    display: none;
+  }
+  table.products-table td[data-label="Sản phẩm"] {
+    grid-area: product;
+  }
+  table.products-table td[data-label="SKU"] {
+    grid-area: sku;
+    font-size: 13px;
+  }
+  table.products-table td[data-label="Tồn kho"] {
+    grid-area: stock;
+    justify-content: flex-end;
+  }
+  table.products-table td[data-label="Giá bán"] {
+    grid-area: price;
+    font-weight: 600;
+  }
+  table.products-table td[data-label="Giá bán"]::before {
+    display: inline-block;
+    content: "Giá bán:";
+    margin-right: 6px;
+  }
+  table.products-table td[data-label="Giá vốn"] {
+    grid-area: cost;
+    justify-content: flex-end;
+  }
+  table.products-table td[data-label="Giá vốn"]::before {
+    display: inline-block;
+    content: "Giá vốn:";
+    margin-right: 6px;
+  }
+  table.products-table td[data-label="Thao tác"] {
+    grid-area: actions;
+    justify-content: flex-start;
+    margin-top: 8px;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px !important;
+  }
+  table.products-table td[data-label="Thao tác"] .row-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* Shift Table specific card layout */
+  table.shift-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.shift-table thead {
+    display: none;
+  }
+  table.shift-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.shift-table tr {
+    display: grid;
+    grid-template-areas: 
+      "staff staff"
+      "start end"
+      "expected actual"
+      "diff status";
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 16px;
+    margin: 0;
+    align-items: center;
+  }
+  table.shift-table td {
+    display: flex;
+    border: none;
+    padding: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start;
+  }
+  table.shift-table td::before {
+    display: none;
+  }
+  table.shift-table td[data-label="Nhân viên"] {
+    grid-area: staff;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+  table.shift-table td[data-label="Bắt đầu"] {
+    grid-area: start;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  table.shift-table td[data-label="Bắt đầu"]::before {
+    display: inline-block;
+    content: "Bắt đầu:";
+    margin-right: 6px;
+  }
+  table.shift-table td[data-label="Kết thúc"] {
+    grid-area: end;
+    font-size: 13px;
+    color: var(--muted);
+    justify-content: flex-end;
+  }
+  table.shift-table td[data-label="Kết thúc"]::before {
+    display: inline-block;
+    content: "Kết thúc:";
+    margin-right: 6px;
+  }
+  table.shift-table td[data-label="Dự kiến"] {
+    grid-area: expected;
+  }
+  table.shift-table td[data-label="Dự kiến"]::before {
+    display: inline-block;
+    content: "Dự kiến:";
+    margin-right: 6px;
+  }
+  table.shift-table td[data-label="Thực tế"] {
+    grid-area: actual;
+    justify-content: flex-end;
+  }
+  table.shift-table td[data-label="Thực tế"]::before {
+    display: inline-block;
+    content: "Thực tế:";
+    margin-right: 6px;
+  }
+  table.shift-table td[data-label="Chênh lệch"] {
+    grid-area: diff;
+  }
+  table.shift-table td[data-label="Chênh lệch"]::before {
+    display: inline-block;
+    content: "Lệch:";
+    margin-right: 6px;
+  }
+  table.shift-table td[data-label="Trạng thái"] {
+    grid-area: status;
+    justify-content: flex-end;
+  }
+
+  /* Inventory Table specific card layout */
+  table.inventory-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.inventory-table thead {
+    display: none;
+  }
+  table.inventory-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  table.inventory-table tr {
+    display: grid;
+    grid-template-areas: 
+      "product change"
+      "time time"
+      "reason reason";
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 16px;
+    margin: 0;
+    align-items: center;
+  }
+  table.inventory-table td {
+    display: flex;
+    border: none;
+    padding: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start;
+  }
+  table.inventory-table td::before {
+    display: none;
+  }
+  table.inventory-table td[data-label="Sản phẩm"] {
+    grid-area: product;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+  table.inventory-table td[data-label="Thay đổi"] {
+    grid-area: change;
+    font-weight: bold;
+    justify-content: flex-end;
+  }
+  table.inventory-table td[data-label="Thời gian"] {
+    grid-area: time;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  table.inventory-table td[data-label="Thời gian"]::before {
+    display: inline-block;
+    content: "Thời gian:";
+    margin-right: 6px;
+  }
+  table.inventory-table td[data-label="Lý do"] {
+    grid-area: reason;
+    font-size: 13px;
+    margin-top: 4px;
+    padding-top: 8px !important;
+    border-top: 1px dashed var(--border);
+  }
+  table.inventory-table td[data-label="Lý do"]::before {
+    display: inline-block;
+    content: "Lý do:";
+    margin-right: 6px;
+  }
 }
 @media print {
+  #receipt { 
+    background: white !important; 
+    color: black !important; 
+    font-family: "Courier New", Courier, monospace !important; 
+    padding: 5px !important; 
+  }
+  #receipt * { 
+    color: black !important; 
+  }
+  #receipt .receipt-divider { 
+    border-top: 1px dashed black !important; 
+  }
   @page {
     size: 80mm auto;
     margin: 3mm;

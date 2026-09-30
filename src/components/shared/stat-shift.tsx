@@ -36,7 +36,7 @@ export function ShiftTable({ data, onApprove }: { data: Snapshot; onApprove: (id
         <Empty title="Chưa có ca làm" detail="Ca làm sẽ xuất hiện sau khi chấm công vào." />
       ) : (
         <div className="table-wrap">
-          <table>
+          <table className="shift-table">
             <thead>
               <tr>
                 <th>Nhân viên</th>
@@ -51,13 +51,13 @@ export function ShiftTable({ data, onApprove }: { data: Snapshot; onApprove: (id
             <tbody>
               {data.shifts.map((s) => (
                 <tr key={s.id}>
-                  <td>{data.members.find((m) => m.id === s.user_id)?.name || "Bạn"}</td>
-                  <td>{date(s.started_at)}</td>
-                  <td>{s.ended_at ? date(s.ended_at) : "Đang làm"}</td>
-                  <td className="money">{money(s.expected_cash ?? expectedCash(s, data.orders))}</td>
-                  <td className="money">{s.actual_cash === null ? "—" : money(s.actual_cash)}</td>
-                  <td className="money">{s.actual_cash === null ? "—" : money(s.actual_cash - (s.expected_cash || 0))}</td>
-                  <td>
+                  <td data-label="Nhân viên">{data.members.find((m) => m.id === s.user_id)?.name || "Bạn"}</td>
+                  <td data-label="Bắt đầu">{date(s.started_at)}</td>
+                  <td data-label="Kết thúc">{s.ended_at ? date(s.ended_at) : "Đang làm"}</td>
+                  <td className="money" data-label="Dự kiến">{money(s.expected_cash ?? expectedCash(s, data.orders))}</td>
+                  <td className="money" data-label="Thực tế">{s.actual_cash === null ? "—" : money(s.actual_cash)}</td>
+                  <td className="money" data-label="Chênh lệch">{s.actual_cash === null ? "—" : money(s.actual_cash - (s.expected_cash || 0))}</td>
+                  <td data-label="Trạng thái">
                     {s.status === "submitted" && data.user.role === "admin" ? (
                       <button className="secondary" onClick={() => onApprove(s.id)}>Duyệt ca</button>
                     ) : (

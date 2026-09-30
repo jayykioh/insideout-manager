@@ -179,7 +179,7 @@ export default function Reports({ data }: { data: Snapshot }) {
                 ))}
               </div>
               <div className="table-wrap" data-table="terminal">
-                <table>
+                <table className="report-table">
                   <caption className="sr-only">
                     Số liệu doanh thu theo ngày tương ứng biểu đồ
                   </caption>
@@ -193,9 +193,9 @@ export default function Reports({ data }: { data: Snapshot }) {
                   <tbody>
                     {days.map((d) => (
                       <tr key={d.day}>
-                        <td>{d.day}</td>
-                        <td>{d.count}</td>
-                        <td>{money(d.revenue)}</td>
+                        <td data-label="Ngày">{d.day}</td>
+                        <td data-label="Số đơn">{d.count}</td>
+                        <td className="money" data-label="Doanh thu">{money(d.revenue)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -211,7 +211,7 @@ export default function Reports({ data }: { data: Snapshot }) {
             <h2>Sản phẩm bán chạy</h2>
           </div>
           <div className="table-wrap" data-table="terminal">
-            <table>
+            <table className="report-table">
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
@@ -222,9 +222,9 @@ export default function Reports({ data }: { data: Snapshot }) {
               <tbody>
                 {top.slice(0, 20).map((p) => (
                   <tr key={p.name}>
-                    <td>{p.name}</td>
-                    <td>{p.quantity}</td>
-                    <td>{money(p.total)}</td>
+                    <td data-label="Sản phẩm">{p.name}</td>
+                    <td data-label="Đã bán">{p.quantity}</td>
+                    <td className="money" data-label="Doanh thu">{money(p.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -249,7 +249,7 @@ export default function Reports({ data }: { data: Snapshot }) {
             <h2>Doanh số nhân viên</h2>
           </div>
           <div className="table-wrap" data-table="terminal">
-            <table>
+            <table className="report-table">
               <thead>
                 <tr>
                   <th>Nhân viên</th>
@@ -260,9 +260,9 @@ export default function Reports({ data }: { data: Snapshot }) {
               <tbody>
                 {data.members.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.name}</td>
-                    <td>{orders.filter((o) => o.user_id === m.id).length}</td>
-                    <td>
+                    <td data-label="Nhân viên">{m.name}</td>
+                    <td data-label="Số đơn">{orders.filter((o) => o.user_id === m.id).length}</td>
+                    <td className="money" data-label="Doanh số">
                       {money(
                         orders
                           .filter((o) => o.user_id === m.id)

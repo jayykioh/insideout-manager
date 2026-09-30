@@ -188,7 +188,7 @@ export default function Manager() {
     };
   }, []);
   const handleRequestNotif = async () => {
-    const perm = await requestPermission();
+    const perm = await requestPermission(data?.shop_id);
     setNotifPerm(perm);
   };
   const reload = async () => {
@@ -258,14 +258,25 @@ export default function Manager() {
     if (!data || !online) return;
     const run = async () => {
       try {
-        const before = (await pending()).length;
         await syncQueue(data);
-        const after = await pending();
-        setQueue(after);
-        if (after.length < before) {
-          const fresh = await snapshot();
-          setData(fresh);
+        const fresh = await snapshot();
+        if (data) {
+          const newOrders = fresh.orders.filter(
+            (o) => !data.orders.some((prev) => prev.id === o.id) && o.user_id !== data.user.id
+          );
+          const newExpenses = fresh.expenses.filter(
+            (e) => !data.expenses.some((prev) => prev.id === e.id)
+          );
+          for (const o of newOrders) {
+            const m = fresh.members.find((x) => x.id === o.user_id)?.name || "Nhân viên";
+            notifyCheckout(money(o.total), paymentNames[o.payment_method] + " (" + m + ")");
+          }
+          for (const e of newExpenses) {
+            notifyExpense(e.note, money(e.amount));
+          }
         }
+        setData(fresh);
+        setQueue(await pending());
       } catch {
         /* A locked or disconnected session keeps its durable outbox. */
       }
@@ -797,9 +808,7 @@ export default function Manager() {
         
         <p className="secure-note" style={{ marginTop: 15 }}>
           <ShieldCheck size={12} />{" "}
-          {isDemo()
-            ? "Trải nghiệm · Dữ liệu trên thiết bị"
-            : "Giao dịch được ghi nhận an toàn"}
+          Giao dịch được ghi nhận an toàn
         </p>
       </div>
     </>
@@ -859,13 +868,8 @@ export default function Manager() {
           <div className="top-actions">
             <button className="sync-button" onClick={() => setModal("queue")}>
               {online ? <CloudCheck size={16} /> : <CloudOff size={16} />}
-              <span>
-                {queue.length
-                  ? queue.length + " chờ đồng bộ"
-                  : isDemo()
-                    ? "Dữ liệu trải nghiệm"
-                    : "Đã đồng bộ"}
-              </span>
+              {queue.length > 0 && <span>{queue.length} chờ đồng bộ</span>}
+              {!online && queue.length === 0 && <span>Mất kết nối</span>}
             </button>
             {notifPerm !== "unsupported" && notifPerm !== "granted" && (
               <button
@@ -958,11 +962,6 @@ export default function Manager() {
               <IconButton label="Đóng lỗi" onClick={() => setError("")}>
                 <X size={16} />
               </IconButton>
-            </div>
-          )}
-          {isDemo() && path !== "/pos" && (
-            <div className="demo-note">
-              Không gian trải nghiệm. Dữ liệu lưu trên trình duyệt này.
             </div>
           )}
           {!admin &&
@@ -1152,13 +1151,13 @@ export default function Manager() {
                     />
                   ) : (
                     <div className="table-wrap">
-                      <table>
+                      <table className="orders-table">
                         <thead>
                           <tr>
                             <th>Mã đơn</th>
                             <th>Thời gian</th>
                             <th>Nhân viên</th>
-                            <th>Thanh toán</th>
+                            <th className="hide-on-mobile">Thanh toán</th>
                             <th>Trạng thái</th>
                             <th className="right">Tổng cộng</th>
                           </tr>
@@ -1185,7 +1184,7 @@ export default function Manager() {
                                   {data.members.find((m) => m.id === o.user_id)
                                     ?.name || "Nhân viên"}
                                 </td>
-                                <td data-label="Thanh toán">
+                                <td data-label="Thanh toán" className="hide-on-mobile">
                                   {paymentNames[o.payment_method]}
                                 </td>
                                 <td data-label="Trạng thái">
@@ -1325,7 +1324,7 @@ export default function Manager() {
                     </label>
                   </div>
                   <div className="table-wrap">
-                    <table>
+                    <table className="products-table">
                       <thead>
                         <tr>
                           <th>Sản phẩm</th>
@@ -1696,6 +1695,96 @@ export default function Manager() {
       )}
       {receipt && (
         <Modal title="Chi tiết đơn hàng" close={() => setReceipt(null)}>
+          
+          {/* Default on-screen layout */}
+          <div className="order-details">
+            <div className="order-details-header">
+              <div className="order-details-meta">
+                <h3>{receipt.number}</h3>
+                <p>{date(receipt.created_at)}</p>
+                {receipt.sync && <p className="sync-warn" style={{ marginTop: 8 }}>ĐÃ LƯU TRÊN THIẾT BỊ · CHỜ MÁY CHỦ XÁC NHẬN</p>}
+                {receipt.status === "cancelled" && <p className="cancel-warn" style={{ marginTop: 8 }}>ĐÃ HỦY · {receipt.reason}</p>}
+              </div>
+              <div className="order-details-status">
+                <span className={"badge " + (receipt.status === "cancelled" ? "danger" : "success")}>
+                  {receipt.status === "cancelled" ? "Đã hủy" : "Hoàn thành"}
+                </span>
+              </div>
+            </div>
+
+            <div className="order-details-items">
+              {receipt.lines.map((l) => (
+                <div className="order-item-row" key={l.product_id}>
+                  <div className="order-item-info">
+                    <strong>{l.name}</strong>
+                    <small>{l.variant} · SL: {l.quantity}</small>
+                  </div>
+                  <div className="order-item-price">
+                    {money(l.price * l.quantity)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="order-details-summary">
+              {receipt.discount > 0 && (
+                <div className="order-summary-row">
+                  <span>Giảm giá</span>
+                  <span>-{money(receipt.discount)}</span>
+                </div>
+              )}
+              
+              <div className="order-summary-row" style={{ alignItems: "center" }}>
+                <span>Nhân viên</span>
+                {admin ? (
+                  <select 
+                    style={{ width: 'auto', padding: '4px 8px', fontSize: 13, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontWeight: 500, color: 'var(--fg)' }}
+                    value={receipt.user_id}
+                    disabled={busy}
+                    onChange={async (e) => {
+                      const newUserId = e.target.value;
+                      const ok = await mutate({
+                        type: "order_assign",
+                        payload: { id: receipt.id, user_id: newUserId }
+                      });
+                      if (ok) {
+                        setReceipt(prev => prev ? { ...prev, user_id: newUserId } : prev);
+                      }
+                    }}
+                  >
+                    {data.members.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
+                )}
+              </div>
+
+              <div className="order-summary-row">
+                <span>Thanh toán bằng {paymentNames[receipt.payment_method]}</span>
+                <span>
+                  {receipt.cash > 0 && ` Tiền mặt: ${money(receipt.cash)}`}
+                  {receipt.transfer > 0 && ` CK: ${money(receipt.transfer)}`}
+                  {receipt.card > 0 && ` Thẻ: ${money(receipt.card)}`}
+                </span>
+              </div>
+
+              {receipt.note && (
+                <div className="order-summary-row">
+                  <span>Ghi chú</span>
+                  <span>{receipt.note}</span>
+                </div>
+              )}
+
+              <div className="order-summary-row total">
+                <span>Tổng thanh toán</span>
+                <span>{money(receipt.total)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Printable receipt (hidden on screen) */}
           <div className="receipt" id="receipt">
             <div className="receipt-header">
               <h2>{data.settings.name}</h2>
@@ -1731,31 +1820,9 @@ export default function Manager() {
               <strong>Tổng cộng</strong>
               <strong>{money(receipt.total)}</strong>
             </div>
-            <div className="summary-row" style={{ alignItems: "center" }}>
+            <div className="summary-row">
               <span>Nhân viên</span>
-              {admin ? (
-                <select 
-                  style={{ width: 'auto', padding: '4px 8px', fontSize: 13, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontWeight: 500, color: 'var(--fg)' }}
-                  value={receipt.user_id}
-                  disabled={busy}
-                  onChange={async (e) => {
-                    const newUserId = e.target.value;
-                    const ok = await mutate({
-                      type: "order_assign",
-                      payload: { id: receipt.id, user_id: newUserId }
-                    });
-                    if (ok) {
-                      setReceipt(prev => prev ? { ...prev, user_id: newUserId } : prev);
-                    }
-                  }}
-                >
-                  {data.members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <span>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
-              )}
+              <span>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
             </div>
             <div className="summary-row">
               <span>Phương thức thanh toán</span>
@@ -2059,16 +2126,8 @@ export default function Manager() {
               ))
           ) : (
             <Empty
-              title={
-                isDemo()
-                  ? "Đang sử dụng dữ liệu trải nghiệm"
-                  : "Tất cả đã được đồng bộ"
-              }
-              detail={
-                isDemo()
-                  ? "Các thao tác được lưu trên trình duyệt. Đăng nhập để sử dụng dữ liệu cửa hàng."
-                  : "Đơn hàng đã được ghi nhận trên máy chủ."
-              }
+              title="Tất cả dữ liệu an toàn"
+              detail="Tất cả giao dịch đã được đồng bộ với máy chủ."
             />
           )}
         </Modal>

@@ -11,14 +11,53 @@ export function getPermission(): NotifPermission {
 }
 
 /** Ask the user for permission and return the resulting state. */
-export async function requestPermission(): Promise<NotifPermission> {
+export async function requestPermission(shopId?: string): Promise<NotifPermission> {
   if (typeof Notification === "undefined") return "unsupported";
-  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "default") {
+    try {
+      await Notification.requestPermission();
+    } catch {
+      return "denied";
+    }
+  }
+  
+  if (Notification.permission === "granted") {
+    // If we have shopId, subscribe to push
+    if (shopId) {
+      await subscribeToPush(shopId);
+    }
+    return "granted";
+  }
+  return "denied";
+}
+
+async function subscribeToPush(shopId: string) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
   try {
-    const result = await Notification.requestPermission();
-    return result as NotifPermission;
-  } catch {
-    return "denied";
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: "BFM5wkoyrQiiJddM1PIuyEXBsw0jdIK-rYBDkK7fd-xjxqaZ0A6EVT7k5IWKi9utNo54d7KYLBrW2IWTc2f3sKI"
+      });
+    }
+    
+    const subData = sub.toJSON();
+    if (subData.endpoint && subData.keys?.p256dh && subData.keys?.auth) {
+      await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subData.endpoint,
+          p256dh: subData.keys.p256dh,
+          auth: subData.keys.auth,
+          shop_id: shopId
+        })
+      });
+    }
+  } catch (e) {
+    console.error("Push API error", e);
   }
 }
 

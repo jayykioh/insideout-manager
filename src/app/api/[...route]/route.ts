@@ -233,6 +233,26 @@ async function handler(
       if (error) throw error;
       return ok(data || { ok: true });
     }
+    if (route === "push" && req.method === "POST") {
+      const input = z
+        .object({
+          endpoint: z.string(),
+          p256dh: z.string(),
+          auth: z.string(),
+          shop_id: z.string().uuid()
+        })
+        .parse(p);
+      const service = supabase(undefined, true);
+      const { error } = await service.from("push_subscriptions").upsert({
+        user_id: user.id,
+        shop_id: input.shop_id,
+        endpoint: input.endpoint,
+        p256dh: input.p256dh,
+        auth: input.auth
+      }, { onConflict: "endpoint" });
+      if (error) throw error;
+      return ok({ ok: true });
+    }
     return okError("Không tìm thấy thao tác.", 404);
   } catch (e) {
     const message =

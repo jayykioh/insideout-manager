@@ -36,3 +36,16 @@ self.addEventListener('notificationclick',(event:NotificationEvent)=>{
     })
   );
 });
+
+self.addEventListener('push', (event: PushEvent) => {
+  if (!event.data) return;
+  const payload = event.data.json();
+  const title = payload.title || 'Thông báo mới';
+  const options = {
+    body: payload.body,
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    data: payload.data
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
