@@ -36,18 +36,25 @@ serve(async (req) => {
 
     // Identify if it's an order or expense based on the table name
     const table = body.table;
-    let title = "Thông báo mới";
+    const title = "Thông báo mới";
     let bodyText = "";
 
+    // Filter out the person who created the action
+    const notifySubs = subscriptions.filter((sub: { user_id: string }) => {
+      if (payload.user_id && sub.user_id === payload.user_id) return false;
+      return true;
+    });
+
     if (table === "orders") {
-      // Don't notify the person who created it
-      if (payload.user_id) {
-        subscriptions.filter(sub => sub.user_id !== payload.user_id);
-      }
-      bodyText = `Đơn hàng mới: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.total)}`;
+      const moneyFmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.total);
+      
+      let methodText = "Khác";
+      if (payload.payment_method === "cash") methodText = "Tiền mặt";
+      if (payload.payment_method === "bank_transfer" || payload.payment_method === "transfer") methodText = "Chuyển khoản";
+      if (payload.payment_method === "card") methodText = "Quẹt thẻ";
+
+      bodyText = `Đơn hàng mới: ${moneyFmt}\nThanh toán: ${methodText}\nMã đơn: ${payload.number || payload.id.slice(0,8).toUpperCase()}`;
     } else if (table === "expenses") {
-      // For expenses, the created by actor is usually stored via audit_logs or we might not have it in expenses directly.
-      // But we can just broadcast.
       bodyText = `Chi phí mới: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.amount)} - ${payload.note}`;
     }
 
@@ -60,7 +67,7 @@ serve(async (req) => {
       }
     });
 
-    const sendPromises = subscriptions.map((sub: any) => {
+    const sendPromises = notifySubs.map((sub: { id: string; endpoint: string; p256dh: string; auth: string }) => {
       const pushSubscription = {
         endpoint: sub.endpoint,
         keys: {
@@ -70,7 +77,7 @@ serve(async (req) => {
       };
       
       return webPush.sendNotification(pushSubscription, notificationPayload)
-        .catch(async (err: any) => {
+        .catch(async (err: Error & { statusCode?: number }) => {
           if (err.statusCode === 410 || err.statusCode === 404) {
             // Subscription expired or invalid
             await supabaseClient.from("push_subscriptions").delete().eq("id", sub.id);
@@ -86,8 +93,8 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       headers: { "Content-Type": "application/json" },
       status: 400,
     });

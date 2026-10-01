@@ -1735,7 +1735,7 @@ export default function Manager() {
               )}
               
               <div className="order-summary-row" style={{ alignItems: "center" }}>
-                <span>Nhân viên</span>
+                <span style={{ color: "var(--muted)" }}>Người bán</span>
                 {admin ? (
                   <select 
                     style={{ width: 'auto', padding: '4px 8px', fontSize: 13, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontWeight: 500, color: 'var(--fg)' }}
@@ -1757,17 +1757,28 @@ export default function Manager() {
                     ))}
                   </select>
                 ) : (
-                  <span>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
+                  <span className="badge" style={{ fontSize: 13, padding: "4px 8px" }}>
+                    <UserCircle size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}
+                  </span>
                 )}
               </div>
 
-              <div className="order-summary-row">
-                <span>Thanh toán bằng {paymentNames[receipt.payment_method]}</span>
-                <span>
-                  {receipt.cash > 0 && ` Tiền mặt: ${money(receipt.cash)}`}
-                  {receipt.transfer > 0 && ` CK: ${money(receipt.transfer)}`}
-                  {receipt.card > 0 && ` Thẻ: ${money(receipt.card)}`}
-                </span>
+              <div className="order-summary-row" style={{ alignItems: "flex-start", marginTop: 8 }}>
+                <span style={{ color: "var(--muted)", paddingTop: 4 }}>Phương thức</span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <span className="badge" style={{ fontSize: 13, padding: "4px 8px", background: "color-mix(in srgb, var(--text) 10%, transparent)", color: "var(--text)" }}>
+                    <CreditCard size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {paymentNames[receipt.payment_method]}
+                  </span>
+                  {(receipt.cash > 0 || receipt.transfer > 0 || receipt.card > 0) && (
+                    <div style={{ fontSize: 13, textAlign: "right", color: "var(--muted)", marginTop: 4 }}>
+                      {receipt.cash > 0 && <div>Tiền mặt: <strong style={{ color: "var(--text)" }}>{money(receipt.cash)}</strong></div>}
+                      {receipt.transfer > 0 && <div>Chuyển khoản: <strong style={{ color: "var(--text)" }}>{money(receipt.transfer)}</strong></div>}
+                      {receipt.card > 0 && <div>Thẻ: <strong style={{ color: "var(--text)" }}>{money(receipt.card)}</strong></div>}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {receipt.note && (
