@@ -3209,3 +3209,122 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================================
+   UI/UX PRO MAX + HALLMARK ENHANCEMENTS
+   ========================================================================= */
+
+/* Softer modals with subtle shadow and border */
+.modal {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 32px 64px -16px rgba(0,0,0,0.3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+:root[data-theme="light"] .modal {
+  background: rgba(253, 250, 245, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 32px 64px -16px rgba(0,0,0,0.1);
+}
+
+/* Glassmorphism for floating elements (if any) */
+.toast {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(19, 15, 13, 0.85);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+:root[data-theme="light"] .toast {
+  background: rgba(253, 250, 245, 0.85);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+/* Better mobile touch targets for buttons and inputs */
+@media (max-width: 768px) {
+  button, select, .input, input {
+    min-height: 44px; /* Apple Human Interface Guidelines */
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .modal-actions > button {
+    width: 100%;
+    margin: 0;
+  }
+
+  .table-wrap {
+    border-radius: var(--radius-lg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .orders-table td, .orders-table th, table td, table th {
+    padding: 12px 16px;
+  }
+
+  /* Transform tables into cards on very small screens */
+  @media (max-width: 500px) {
+    table, thead, tbody, th, td, tr {
+      display: block;
+    }
+    thead tr {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+    }
+    tr {
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 8px;
+    }
+    td {
+      border: none;
+      border-bottom: 1px solid var(--border-soft);
+      position: relative;
+      padding-left: 40%;
+      text-align: right;
+      min-height: 40px;
+    }
+    td:last-child {
+      border-bottom: 0;
+    }
+    td:before {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 35%;
+      padding-right: 10px;
+      white-space: nowrap;
+      content: attr(data-label);
+      font-weight: 500;
+      color: var(--muted);
+      text-align: left;
+    }
+  }
+}
+
+/* Micro-interactions */
+button:active {
+  transform: scale(0.96);
+}
+
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  transition: box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.badge {
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

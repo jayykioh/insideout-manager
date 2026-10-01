@@ -150,6 +150,10 @@ export default function Manager() {
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<"cash" | "transfer" | "card">("cash");
   const [receipt, setReceipt] = useState<Order | null>(null);
+  const [editPayment, setEditPayment] = useState<Order | null>(null);
+  const [editCash, setEditCash] = useState("");
+  const [editTransfer, setEditTransfer] = useState("");
+  const [editCard, setEditCard] = useState("");
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [modal, setModal] = useState<
     | "product"
@@ -1778,6 +1782,20 @@ export default function Manager() {
                       {receipt.card > 0 && <div>Thẻ: <strong style={{ color: "var(--text)" }}>{money(receipt.card)}</strong></div>}
                     </div>
                   )}
+                  {admin && (
+                    <button 
+                      className="secondary" 
+                      style={{ marginTop: 8, padding: "2px 8px", fontSize: 12, minHeight: 24 }}
+                      onClick={() => {
+                        setEditCash(receipt.cash.toString());
+                        setEditTransfer(receipt.transfer.toString());
+                        setEditCard(receipt.card.toString());
+                        setEditPayment(receipt);
+                      }}
+                    >
+                      Sửa thanh toán
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1896,6 +1914,60 @@ export default function Manager() {
           )}
         </Modal>
       )}
+
+      {editPayment && (
+        <Modal title="Sửa thanh toán đơn hàng" close={() => setEditPayment(null)}>
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ marginBottom: 12 }}>Tổng thanh toán cần khớp: <strong style={{ color: "var(--accent-bright)" }}>{money(editPayment.total)}</strong></p>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Tiền mặt</label>
+                <input type="number" className="input" style={{ width: "100%" }} value={editCash} onChange={e => setEditCash(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Chuyển khoản</label>
+                <input type="number" className="input" style={{ width: "100%" }} value={editTransfer} onChange={e => setEditTransfer(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Quẹt thẻ</label>
+                <input type="number" className="input" style={{ width: "100%" }} value={editCard} onChange={e => setEditCard(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="secondary" onClick={() => setEditPayment(null)}>Hủy</button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={async () => {
+                const c = parseInt(editCash) || 0;
+                const t = parseInt(editTransfer) || 0;
+                const cd = parseInt(editCard) || 0;
+                if (c + t + cd !== editPayment.total) {
+                  alert("Tổng số tiền nhập vào không khớp với tổng đơn hàng!");
+                  return;
+                }
+                const ok = await mutate({
+                  type: "edit_order_payment",
+                  payload: {
+                    id: editPayment.id,
+                    cash: c,
+                    transfer: t,
+                    card: cd
+                  }
+                });
+                if (ok) {
+                  setEditPayment(null);
+                  setReceipt(prev => prev ? { ...prev, cash: c, transfer: t, card: cd } : prev);
+                }
+              }}
+            >
+              Lưu thay đổi
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {cancelingOrder && (
         <Modal
           title="Hủy đơn hàng"

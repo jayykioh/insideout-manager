@@ -42,10 +42,10 @@ self.addEventListener('push', (event: PushEvent) => {
   const payload = event.data.json();
   const title = payload.title || 'Thông báo mới';
   const options = {
-    body: payload.body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    data: payload.data
+    body: payload.body || payload.options?.body,
+    icon: payload.icon || payload.options?.icon || '/icons/icon-192x192.png',
+    badge: payload.badge || payload.options?.badge || '/icons/icon-72x72.png',
+    data: payload.data || payload.options?.data
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

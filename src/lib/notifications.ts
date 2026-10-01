@@ -36,12 +36,17 @@ async function subscribeToPush(shopId: string) {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: "BFM5wkoyrQiiJddM1PIuyEXBsw0jdIK-rYBDkK7fd-xjxqaZ0A6EVT7k5IWKi9utNo54d7KYLBrW2IWTc2f3sKI"
-      });
+    // Force unsubscribe old subscriptions to ensure the new VAPID key is used
+    if (sub) {
+      const currentKey = sub.options.applicationServerKey;
+      // We check if it exists; if we want to be safe, we just unsubscribe and subscribe again once
+      await sub.unsubscribe();
     }
+    
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: "BN78Dz6xgilZm5NbwO5tZiCW2z9n_MGedQRMZgT-47Gyo8ed9B2H_44YdTzFi8K8p9cNiAPcFALT3fFw9M2GSkU"
+    });
     
     const subData = sub.toJSON();
     if (subData.endpoint && subData.keys?.p256dh && subData.keys?.auth) {

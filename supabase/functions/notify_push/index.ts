@@ -39,11 +39,11 @@ serve(async (req) => {
     const title = "Thông báo mới";
     let bodyText = "";
 
-    // Filter out the person who created the action
-    const notifySubs = subscriptions.filter((sub: { user_id: string }) => {
+    // Filter out the person who created the action (Disabled for testing)
+    const notifySubs = subscriptions; /* .filter((sub: { user_id: string }) => {
       if (payload.user_id && sub.user_id === payload.user_id) return false;
       return true;
-    });
+    }); */
 
     if (table === "orders") {
       const moneyFmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.total);
