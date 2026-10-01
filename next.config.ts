@@ -5,10 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   : "https://*.supabase.co";
 
 const config: NextConfig = {
-  devIndicators: {
-    appIsrStatus: false,
-    buildActivity: false,
-  },
+
   poweredByHeader: false,
   async headers() {
     return [
