@@ -2,6 +2,7 @@
 import {
   useEffect,
   useState,
+  useRef,
   type FormEvent,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -176,6 +177,16 @@ export default function Manager() {
     action: () => void;
   } | null>(null);
 
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  const queueRef = useRef(queue);
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
   const [, setClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setClock(Date.now()), 60000);
@@ -259,25 +270,25 @@ export default function Manager() {
     };
   }, []);
   useEffect(() => {
-    if (!data || !online) return;
+    if (!online) return;
     const run = async () => {
+      const currentData = dataRef.current;
+      if (!currentData) return;
       try {
-        await syncQueue(data);
+        await syncQueue(currentData);
         const fresh = await snapshot();
-        if (data) {
-          const newOrders = fresh.orders.filter(
-            (o) => !data.orders.some((prev) => prev.id === o.id) && o.user_id !== data.user.id
-          );
-          const newExpenses = fresh.expenses.filter(
-            (e) => !data.expenses.some((prev) => prev.id === e.id)
-          );
-          for (const o of newOrders) {
-            const m = fresh.members.find((x) => x.id === o.user_id)?.name || "Nhân viên";
-            notifyCheckout(money(o.total), paymentNames[o.payment_method] + " (" + m + ")");
-          }
-          for (const e of newExpenses) {
-            notifyExpense(e.note, money(e.amount));
-          }
+        const newOrders = fresh.orders.filter(
+          (o) => !currentData.orders.some((prev) => prev.id === o.id) && o.user_id !== currentData.user.id
+        );
+        const newExpenses = fresh.expenses.filter(
+          (e) => !currentData.expenses.some((prev) => prev.id === e.id)
+        );
+        for (const o of newOrders) {
+          const m = fresh.members.find((x) => x.id === o.user_id)?.name || "Nhân viên";
+          notifyCheckout(money(o.total), paymentNames[o.payment_method] + " (" + m + ")");
+        }
+        for (const e of newExpenses) {
+          notifyExpense(e.note, money(e.amount));
         }
         setData(fresh);
         setQueue(await pending());
@@ -287,7 +298,7 @@ export default function Manager() {
     };
     const synced = (event: MessageEvent) => {
       if (event.data?.type === "OUTBOX_SYNCED") {
-        const prevCount = queue.length;
+        const prevCount = queueRef.current.length;
         snapshot()
           .then(setData)
           .catch(() => {});
@@ -309,7 +320,7 @@ export default function Manager() {
       navigator.serviceWorker?.removeEventListener("message", synced);
       clearInterval(timer);
     };
-  }, [data, online, queue.length]);
+  }, [online]);
   // Idle timer completely removed by user request
   useEffect(() => {
     if (notice) {
@@ -1884,19 +1895,18 @@ export default function Manager() {
             <div className="receipt-divider" />
             <p className="receipt-footer">{data.settings.receipt_footer}</p>
           </div>
-          <div className="modal-actions" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="primary" onClick={() => window.print()} style={{ flex: 1, minWidth: '120px' }}>
+          <div className="modal-actions">
+            <button className="secondary" onClick={() => setReceipt(null)}>
+              Đóng
+            </button>
+            <button className="primary" onClick={() => window.print()}>
               <Printer size={17} />
               In hóa đơn
-            </button>
-            <button className="secondary" onClick={() => setReceipt(null)} style={{ flex: 1, minWidth: '120px' }}>
-              Đóng
             </button>
             {receipt.status === "completed" &&
               (admin || data.settings.allow_staff_cancel) && (
                 <button
                   className="danger-button"
-                  style={{ flex: 1, minWidth: '120px' }}
                   disabled={busy}
                   onClick={() => {
                     setReceipt(null);
@@ -2218,11 +2228,11 @@ export default function Manager() {
       {dialog && (
         <Modal title={dialog.title} close={() => setDialog(null)}>
           <p style={{ marginTop: 0 }}>{dialog.message}</p>
-          <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
-            <button className="secondary" style={{ flex: 1 }} onClick={() => setDialog(null)}>
+          <div className="modal-actions">
+            <button className="secondary" onClick={() => setDialog(null)}>
               Hủy
             </button>
-            <button className="primary" style={{ flex: 1, background: "var(--danger)", borderColor: "var(--danger)", color: "white" }} onClick={() => {
+            <button className="primary" style={{ background: "var(--danger)", borderColor: "var(--danger)", color: "white" }} onClick={() => {
               dialog.action();
               setDialog(null);
             }}>

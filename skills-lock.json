@@ -73,6 +73,12 @@
       "skillPath": "skills/review-animations/SKILL.md",
       "computedHash": "b4e5f0f4fe3e2743c85bf7354108f48a0b9d502cb20ef5c4a9c195da91f93736"
     },
+    "ui-ux": {
+      "source": "evondev/evondevKit",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux/SKILL.md",
+      "computedHash": "3374cfaa3086898de96f37bbe80857904809f9c4776705de54b58773eb7b09a5"
+    },
     "write-swift": {
       "source": "emilkowalski/skill",
       "sourceType": "github",

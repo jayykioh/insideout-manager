@@ -1443,13 +1443,13 @@ tbody tr:hover td:first-child {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  max-width: 480px;
+  border-radius: 16px; /* modern rounded-2xl */
+  max-width: 448px; /* max-w-md */
   width: calc(100% - 32px);
-  padding: 25px;
+  padding: 24px;
   max-height: 90dvh;
   overflow: auto;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 8px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.03), 0 24px 48px -12px rgba(0,0,0,0.25);
 }
 .modal::backdrop {
   background: rgba(0, 0, 0, 0.7);
@@ -1476,10 +1476,20 @@ tbody tr:hover td:first-child {
   }
 }
 .modal-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.modal-header .icon-button {
+  margin-right: -8px;
+  margin-top: -8px;
+  color: var(--muted);
 }
 .payment-total {
   padding: 16px 0 28px;
@@ -1527,9 +1537,9 @@ tbody tr:hover td:first-child {
 }
 .modal-actions {
   display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  margin-top: 20px;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 #receipt { display: none; }
 
@@ -3327,4 +3337,109 @@ input:focus, select:focus {
   border-radius: 6px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* UI/UX PRO MAX + APPLE DESIGN ENHANCEMENTS - LIST ITEMS */
+/* Ensure consistent padding, typography, and interactive feel for all list items */
+.order-item-row,
+.queue-item,
+.audit-item,
+.device-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  transition: background 150ms var(--ease-out), transform 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+
+.order-item-row:hover,
+.queue-item:hover,
+.audit-item:hover,
+.device-row:hover {
+  background: var(--card-bg);
+  border-color: var(--border-soft);
+}
+
+.order-item-row:active,
+.queue-item:active,
+.audit-item:active,
+.device-row:active {
+  transform: scale(0.98);
+}
+
+.order-item-info strong,
+.queue-item strong,
+.audit-item strong {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--fg);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.order-item-info small,
+.queue-item p,
+.audit-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.order-item-price,
+.queue-item strong:last-child {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Summary rows (receipts, totals) - cleaner Apple-style */
+.summary-row, 
+.order-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 14px;
+  border-bottom: 1px solid transparent;
+}
+
+.summary-row span:last-child,
+.order-summary-row > div:last-child {
+  color: var(--fg);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-summary-row.total,
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border) !important; /* Simple clean line, no gradient */
+  padding-top: 16px;
+  margin-top: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--fg);
+}
+
+.total-row::before {
+  display: none !important; /* Remove gradient line */
+}
+
+.total-row strong:last-child,
+.order-summary-row.total > div:last-child {
+  font-size: 20px !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fg);
 }

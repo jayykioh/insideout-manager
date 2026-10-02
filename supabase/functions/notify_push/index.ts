@@ -39,21 +39,33 @@ serve(async (req) => {
     const title = "Thông báo mới";
     let bodyText = "";
 
-    // Filter out the person who created the action (Disabled for testing)
-    const notifySubs = subscriptions; /* .filter((sub: { user_id: string }) => {
+    // Filter out the person who created the action
+    const notifySubs = subscriptions.filter((sub: { user_id: string }) => {
       if (payload.user_id && sub.user_id === payload.user_id) return false;
+      if (payload.actor_id && sub.user_id === payload.actor_id) return false; // for expenses
       return true;
-    }); */
+    });
 
     if (table === "orders") {
       const moneyFmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.total);
       
-      let methodText = "Khác";
-      if (payload.payment_method === "cash") methodText = "Tiền mặt";
-      if (payload.payment_method === "bank_transfer" || payload.payment_method === "transfer") methodText = "Chuyển khoản";
-      if (payload.payment_method === "card") methodText = "Quẹt thẻ";
+      let sellerName = "Nhân viên";
+      if (payload.user_id) {
+        const { data: member } = await supabaseClient
+          .from("members")
+          .select("name")
+          .eq("id", payload.user_id)
+          .single();
+        if (member) sellerName = member.name;
+      }
+      
+      const methods = [];
+      if (Number(payload.cash) > 0) methods.push("Tiền mặt");
+      if (Number(payload.transfer) > 0) methods.push("Chuyển khoản");
+      if (Number(payload.card) > 0) methods.push("Quẹt thẻ");
+      const methodText = methods.join(" + ") || "Khác";
 
-      bodyText = `Đơn hàng mới: ${moneyFmt}\nThanh toán: ${methodText}\nMã đơn: ${payload.number || payload.id.slice(0,8).toUpperCase()}`;
+      bodyText = `Người bán: ${sellerName}\nĐơn hàng mới: ${moneyFmt}\nThanh toán: ${methodText}\nMã đơn: ${payload.number || payload.id.slice(0,8).toUpperCase()}`;
     } else if (table === "expenses") {
       bodyText = `Chi phí mới: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(payload.amount)} - ${payload.note}`;
     }
