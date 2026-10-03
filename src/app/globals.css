@@ -2501,11 +2501,12 @@ tbody tr:hover td:first-child {
   }
   table td {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     border-bottom: 1px solid var(--border);
     padding: 8px 0 !important;
     text-align: right !important;
+    gap: 12px;
   }
   table td:last-child {
     border-bottom: 0;
@@ -2515,7 +2516,7 @@ tbody tr:hover td:first-child {
     font-weight: 500;
     color: var(--muted);
     text-align: left;
-    margin-right: 12px;
+    margin-right: auto;
   }
   /* Remove money alignment on mobile since flex takes over */
   table td.money, table td.right {
