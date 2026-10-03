@@ -3,6 +3,7 @@ import type { Snapshot } from "@/lib/types";
 import { date, expectedCash, money } from "@/lib/domain";
 import { Empty } from "@/components/ui";
 
+import { UserCircle } from "lucide-react";
 import NumberFlow from '@number-flow/react';
 
 export function Stat({ label, value, detail, formatOptions }: { label: string; value: number | string; detail: string, formatOptions?: Intl.NumberFormatOptions }) {
@@ -51,7 +52,12 @@ export function ShiftTable({ data, onApprove }: { data: Snapshot; onApprove: (id
             <tbody>
               {data.shifts.map((s) => (
                 <tr key={s.id}>
-                  <td data-label="Nhân viên">{data.members.find((m) => m.id === s.user_id)?.name || "Bạn"}</td>
+                  <td data-label="Nhân viên">
+                    <span className="badge">
+                      <UserCircle size={14} />
+                      {data.members.find((m) => m.id === s.user_id)?.name || "Bạn"}
+                    </span>
+                  </td>
                   <td data-label="Bắt đầu">{date(s.started_at)}</td>
                   <td data-label="Kết thúc">{s.ended_at ? date(s.ended_at) : "Đang làm"}</td>
                   <td className="money" data-label="Dự kiến">{money(s.expected_cash ?? expectedCash(s, data.orders))}</td>

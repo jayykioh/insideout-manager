@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, UserCircle } from "lucide-react";
 import type { Snapshot } from "@/lib/types";
 import { businessDay, money } from "@/lib/domain";
 export default function Reports({ data }: { data: Snapshot }) {
@@ -260,7 +260,12 @@ export default function Reports({ data }: { data: Snapshot }) {
               <tbody>
                 {data.members.map((m) => (
                   <tr key={m.id}>
-                    <td data-label="Nhân viên">{m.name}</td>
+                    <td data-label="Nhân viên">
+                      <span className="badge">
+                        <UserCircle size={14} />
+                        {m.name}
+                      </span>
+                    </td>
                     <td data-label="Số đơn">{orders.filter((o) => o.user_id === m.id).length}</td>
                     <td className="money" data-label="Doanh số">
                       {money(

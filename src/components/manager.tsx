@@ -1196,8 +1196,11 @@ export default function Manager() {
                                 </td>
                                 <td data-label="Thời gian">{date(o.created_at)}</td>
                                 <td data-label="Nhân viên">
-                                  {data.members.find((m) => m.id === o.user_id)
-                                    ?.name || "Nhân viên"}
+                                  <span className="badge">
+                                    <UserCircle size={14} />
+                                    {data.members.find((m) => m.id === o.user_id)
+                                      ?.name || "Nhân viên"}
+                                  </span>
                                 </td>
                                 <td data-label="Thanh toán" className="hide-on-mobile">
                                   {paymentNames[o.payment_method]}

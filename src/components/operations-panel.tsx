@@ -9,6 +9,8 @@ import {
   Check,
   RefreshCw,
   UserPlus,
+  Package,
+  ArrowRightLeft,
 } from "lucide-react";
 import type { Snapshot, Command, PayrollLine } from "@/lib/types";
 import { businessDay, date, money } from "@/lib/domain";
@@ -628,11 +630,17 @@ export default function OperationsPanel({
                   <tr key={m.id}>
                     <td data-label="Thời gian">{date(m.created_at)}</td>
                     <td data-label="Sản phẩm">
-                      {data.products.find((p) => p.id === m.product_id)?.name}
+                      <span className="badge">
+                        <Package size={14} />
+                        {data.products.find((p) => p.id === m.product_id)?.name}
+                      </span>
                     </td>
                     <td data-label="Thay đổi">
-                      {m.quantity > 0 ? "+" : ""}
-                      {m.quantity}
+                      <span className={`badge ${m.quantity > 0 ? 'success' : m.quantity < 0 ? 'danger' : ''}`}>
+                        <ArrowRightLeft size={14} />
+                        {m.quantity > 0 ? "+" : ""}
+                        {m.quantity}
+                      </span>
                     </td>
                     <td data-label="Lý do">{m.reason}</td>
                   </tr>
