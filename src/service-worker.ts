@@ -43,9 +43,9 @@ self.addEventListener('push', (event: PushEvent) => {
   const title = payload.title || 'Thông báo mới';
   const options = {
     body: payload.body || payload.options?.body,
-    icon: payload.icon || payload.options?.icon || '/icons/icon-192x192.png',
-    badge: payload.badge || payload.options?.badge || '/icons/icon-72x72.png',
-    data: payload.data || payload.options?.data
+    icon: payload.icon || payload.options?.icon || '/icons/icon-192.png',
+    badge: payload.badge || payload.options?.badge || '/icons/icon-192.png',
+    data: payload.data || payload.options?.data || { url: '/orders' }
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

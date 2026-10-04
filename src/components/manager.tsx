@@ -391,6 +391,10 @@ export default function Manager() {
     setCustomPrices({});
     router.push("/profiles");
   }
+  if (path === "/") {
+    if (typeof window !== "undefined") router.replace("/pos");
+    return null;
+  }
   if (path === "/login" || path === "/profiles")
     return <Login onSuccess={() => router.push("/pos")} />;
   if (loading || !data)
