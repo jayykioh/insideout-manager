@@ -132,7 +132,7 @@ export default function OperationsPanel({
     });
   }
   return (
-    <div className="operations-panel">
+    <div className="panel-group">
       {error && (
         <p className="alert" role="alert">
           {error}
@@ -329,7 +329,7 @@ export default function OperationsPanel({
         </>
       )}
       {path === "/admin/staff" && (
-        <div className="settings-layout">
+        <div className="grid-layout">
           <section className="panel settings-form">
             <h2>Quy tắc lương có hiệu lực</h2>
             <form
@@ -651,7 +651,7 @@ export default function OperationsPanel({
         </section>
       )}
       {path === "/admin/settings" && (
-        <div className="settings-layout">
+        <div className="grid-layout">
           <section className="panel settings-form">
             <h2>Cài đặt cửa hàng</h2>
             <p className="muted small-text">

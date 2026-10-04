@@ -1042,7 +1042,7 @@ export default function Manager() {
                         Sắp xếp: <b>Mặc định</b>
                       </span>
                     </div>
-                    <div className="product-grid">
+                    <div className="grid-3">
                       {selected.map((p) => (
                         <button
                           disabled={p.stock <= 0}
@@ -1165,89 +1165,90 @@ export default function Manager() {
                       }
                     />
                   ) : (
-                    <div className="table-wrap">
-                      <table className="orders-table">
-                        <thead>
-                          <tr>
-                            <th>Mã đơn</th>
-                            <th>Thời gian</th>
-                            <th>Nhân viên</th>
-                            <th className="hide-on-mobile">Thanh toán</th>
-                            <th>Trạng thái</th>
-                            <th className="right">Tổng cộng</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.orders
-                            .filter((o) =>
-                              o.number
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
-                            )
-                            .map((o) => (
-                              <tr key={o.id}>
-                                <td data-label="Mã đơn">
-                                  <button
-                                    className="link-button"
-                                    onClick={() => setReceipt(o)}
-                                  >
-                                    {o.number}
-                                  </button>
-                                </td>
-                                <td data-label="Thời gian">{date(o.created_at)}</td>
-                                <td data-label="Nhân viên">
-                                  <span className="badge">
-                                    <UserCircle size={14} />
-                                    {data.members.find((m) => m.id === o.user_id)
-                                      ?.name || "Nhân viên"}
-                                  </span>
-                                </td>
-                                <td data-label="Thanh toán" className="hide-on-mobile">
-                                  {paymentNames[o.payment_method]}
-                                </td>
-                                <td data-label="Trạng thái">
-                                  <span
-                                    className={
-                                      "badge " +
-                                      (o.status === "cancelled"
-                                        ? "danger"
-                                        : "success")
-                                    }
-                                  >
-                                    {o.status === "cancelled"
-                                      ? "Đã hủy"
-                                      : "Hoàn thành"}
-                                  </span>
-                                  {admin && (
-                                    <button
-                                      className="secondary"
-                                      style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px", minHeight: "26px" }}
-                                      title="Sửa đơn"
-                                      onClick={() => setReceipt(o)}
-                                    >
-                                      Sửa
-                                    </button>
-                                  )}
-                                  {o.status === "completed" &&
-                                    (admin || data.settings.allow_staff_cancel) && (
-                                      <button
-                                        className="danger-button"
-                                        style={{ marginLeft: 8, verticalAlign: "middle", padding: "2px 8px", fontSize: "12px", minHeight: "26px" }}
-                                        title="Hủy đơn"
-                                        disabled={busy}
-                                        onClick={() => setCancelingOrder(o)}
+                    <div className="panel-group" style={{ gap: 24 }}>
+                      {(() => {
+                        const filtered = data.orders.filter((o) =>
+                          o.number.toLowerCase().includes(search.toLowerCase()),
+                        );
+                        
+                        // Group by Month -> Day
+                        type OrderList = typeof data.orders;
+                        const grouped: Record<string, Record<string, OrderList>> = {};
+                        
+                        filtered.forEach((o) => {
+                          const d = new Date(o.created_at);
+                          const monthKey = `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`;
+                          const dayKey = `Ngày ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                          
+                          if (!grouped[monthKey]) grouped[monthKey] = {};
+                          if (!grouped[monthKey][dayKey]) grouped[monthKey][dayKey] = [];
+                          grouped[monthKey][dayKey].push(o);
+                        });
+
+                        return Object.entries(grouped).map(([monthKey, days]) => (
+                          <div key={monthKey} className="month-group" style={{ marginBottom: 16 }}>
+                            <h2 style={{ fontSize: 22, fontWeight: 700, margin: "24px 0 16px", color: "var(--fg)", letterSpacing: "-0.01em" }}>
+                              {monthKey}
+                            </h2>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                              {Object.entries(days).map(([dayKey, ordersInDay]) => (
+                                <div key={dayKey} className="day-group">
+                                  <h4 style={{ margin: "0 0 10px 20px", fontSize: 13, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
+                                    {dayKey}
+                                  </h4>
+                                  <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+                                    {ordersInDay.map((o, index, arr) => (
+                                      <div 
+                                        className="clickable-card" 
+                                        key={o.id} 
+                                        onClick={() => setReceipt(o)}
+                                        style={{ 
+                                          padding: "16px 20px", 
+                                          borderBottom: index < arr.length - 1 ? "1px solid var(--border)" : "none",
+                                          opacity: o.status === "cancelled" ? 0.55 : 1,
+                                          background: o.status === "cancelled" ? "rgba(0,0,0,0.02)" : "transparent"
+                                        }}
                                       >
-                                        Hủy
-                                      </button>
-                                    )}
-                                </td>
-                                <td className="right money" data-label="Tổng cộng">
-                                  {money(o.total)}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                                          <div style={{ flex: 1, minWidth: 0 }}>
+                                            <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 600, textDecoration: o.status === "cancelled" ? "line-through" : "none" }}>
+                                              <span style={{ color: "var(--muted)", fontWeight: 400, marginRight: 4, textDecoration: "none" }}>Đơn</span>
+                                              {o.number}
+                                            </h3>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13, color: "var(--muted)" }}>
+                                              <span style={{ fontWeight: 500, color: "var(--fg)" }}>
+                                                {new Date(o.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                                              </span>
+                                              <span style={{ opacity: 0.4 }}>•</span>
+                                              <span>{paymentNames[o.payment_method]}</span>
+                                              <span style={{ opacity: 0.4 }}>•</span>
+                                              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                                <UserCircle size={14} style={{ opacity: 0.8 }} />
+                                                {data.members.find((m) => m.id === o.user_id)?.name || "N/A"}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+                                            <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                                              <strong className="money" style={{ fontSize: 16, color: o.status === "cancelled" ? "var(--muted)" : "var(--accent-bright)", lineHeight: 1 }}>
+                                                {money(o.total)}
+                                              </strong>
+                                              <span className={"badge " + (o.status === "cancelled" ? "danger" : "success")} style={{ fontSize: 11, padding: "3px 8px" }}>
+                                                {o.status === "cancelled" ? "Đã hủy" : "Hoàn thành"}
+                                              </span>
+                                            </div>
+                                            <ChevronRight size={20} color="var(--muted)" style={{ opacity: 0.5 }} />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
                 </section>
@@ -1265,7 +1266,7 @@ export default function Manager() {
               )}
               {isShift && !admin && (
                 <>
-                  <div className="stats-grid">
+                  <div className="grid-3">
                     <Stat
                       label="Trạng thái hôm nay"
                       value={current ? "Đang trong ca" : admin ? "Sẵn sàng bán hàng" : "Chưa mở ca"}
@@ -1436,7 +1437,7 @@ export default function Manager() {
                 </section>
               )}
               {path === "/admin/staff" && (
-                <div className="staff-grid">
+                <div className="grid-3">
                   {data.members.map((m) => {
                     const shifts = data.shifts.filter(
                       (s) => s.user_id === m.id,
@@ -1534,7 +1535,7 @@ export default function Manager() {
               )}
               {path === "/finance" && (
                 <>
-                  <div className="stats-grid">
+                  <div className="grid-3">
                     <Stat
                       label="Tổng doanh thu đã ghi nhận"
                       value={sales.reduce((s, o) => s + o.total, 0)}
@@ -1714,14 +1715,16 @@ export default function Manager() {
       {receipt && (
         <Modal title="Chi tiết đơn hàng" close={() => setReceipt(null)}>
           
-          {/* Default on-screen layout */}
           <div className="order-details">
             <div className="order-details-header">
               <div className="order-details-meta">
-                <h3>{receipt.number}</h3>
+                <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "var(--muted)" }}>Đơn hàng</span>
+                  {receipt.number}
+                </h3>
                 <p>{date(receipt.created_at)}</p>
-                {receipt.sync && <p className="sync-warn" style={{ marginTop: 8 }}>ĐÃ LƯU TRÊN THIẾT BỊ · CHỜ MÁY CHỦ XÁC NHẬN</p>}
-                {receipt.status === "cancelled" && <p className="cancel-warn" style={{ marginTop: 8 }}>ĐÃ HỦY · {receipt.reason}</p>}
+                {receipt.sync && <p className="sync-warn">ĐÃ LƯU TRÊN THIẾT BỊ · CHỜ MÁY CHỦ XÁC NHẬN</p>}
+                {receipt.status === "cancelled" && <p className="cancel-warn">ĐÃ HỦY · {receipt.reason}</p>}
               </div>
               <div className="order-details-status">
                 <span className={"badge " + (receipt.status === "cancelled" ? "danger" : "success")}>
@@ -1732,12 +1735,16 @@ export default function Manager() {
 
             <div className="order-details-items">
               {receipt.lines.map((l) => (
-                <div className="order-item-row" key={l.product_id}>
+                <div className="order-item-row" key={l.product_id} style={{ alignItems: "flex-start" }}>
                   <div className="order-item-info">
-                    <strong>{l.name}</strong>
-                    <small>{l.variant} · SL: {l.quantity}</small>
+                    <strong style={{ fontSize: 15, marginBottom: 2 }}>{l.name}</strong>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 13 }}>
+                      {l.variant && <span>{l.variant}</span>}
+                      {l.variant && <span>·</span>}
+                      <span style={{ fontWeight: 500, color: "var(--fg)" }}>x{l.quantity}</span>
+                    </div>
                   </div>
-                  <div className="order-item-price">
+                  <div className="order-item-price" style={{ paddingTop: 2 }}>
                     {money(l.price * l.quantity)}
                   </div>
                 </div>
@@ -1748,15 +1755,16 @@ export default function Manager() {
               {receipt.discount > 0 && (
                 <div className="order-summary-row">
                   <span>Giảm giá</span>
-                  <span>-{money(receipt.discount)}</span>
+                  <span style={{ color: "var(--danger)" }}>-{money(receipt.discount)}</span>
                 </div>
               )}
               
               <div className="order-summary-row" style={{ alignItems: "center" }}>
-                <span style={{ color: "var(--muted)" }}>Người bán</span>
+                <span>Người bán</span>
                 {admin ? (
                   <select 
-                    style={{ width: 'auto', padding: '4px 8px', fontSize: 13, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontWeight: 500, color: 'var(--fg)' }}
+                    className="input"
+                    style={{ padding: '6px 12px', fontSize: 14, minWidth: 140, margin: 0, height: 32 }}
                     value={receipt.user_id}
                     disabled={busy}
                     onChange={async (e) => {
@@ -1775,31 +1783,17 @@ export default function Manager() {
                     ))}
                   </select>
                 ) : (
-                  <span className="badge" style={{ fontSize: 13, padding: "4px 8px" }}>
-                    <UserCircle size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}
-                  </span>
+                  <span className="badge"><UserCircle size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }}/>{data.members.find(m => m.id === receipt.user_id)?.name || "N/A"}</span>
                 )}
               </div>
-
-              <div className="order-summary-row" style={{ alignItems: "flex-start", marginTop: 8 }}>
-                <span style={{ color: "var(--muted)", paddingTop: 4 }}>Phương thức</span>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                  <span className="badge" style={{ fontSize: 13, padding: "4px 8px", background: "color-mix(in srgb, var(--text) 10%, transparent)", color: "var(--text)" }}>
-                    <CreditCard size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {paymentNames[receipt.payment_method]}
-                  </span>
-                  {(receipt.cash > 0 || receipt.transfer > 0 || receipt.card > 0) && (
-                    <div style={{ fontSize: 13, textAlign: "right", color: "var(--muted)", marginTop: 4 }}>
-                      {receipt.cash > 0 && <div>Tiền mặt: <strong style={{ color: "var(--text)" }}>{money(receipt.cash)}</strong></div>}
-                      {receipt.transfer > 0 && <div>Chuyển khoản: <strong style={{ color: "var(--text)" }}>{money(receipt.transfer)}</strong></div>}
-                      {receipt.card > 0 && <div>Thẻ: <strong style={{ color: "var(--text)" }}>{money(receipt.card)}</strong></div>}
-                    </div>
-                  )}
+              
+              <div style={{ borderTop: "1px dashed var(--border)", marginTop: 8, paddingTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 500, color: "var(--fg)" }}>Chi tiết thanh toán</span>
                   {admin && (
                     <button 
                       className="secondary" 
-                      style={{ marginTop: 8, padding: "2px 8px", fontSize: 12, minHeight: 24 }}
+                      style={{ padding: "4px 12px", fontSize: 12, height: "auto" }}
                       onClick={() => {
                         setEditCash(receipt.cash.toString());
                         setEditTransfer(receipt.transfer.toString());
@@ -1807,22 +1801,53 @@ export default function Manager() {
                         setEditPayment(receipt);
                       }}
                     >
-                      Sửa thanh toán
+                      Sửa
                     </button>
                   )}
                 </div>
+                
+                <div className="order-summary-row">
+                  <span>Phương thức</span>
+                  <span className="badge" style={{ background: "color-mix(in srgb, var(--text) 8%, transparent)", color: "var(--text)" }}>
+                    <CreditCard size={14} style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {paymentNames[receipt.payment_method]}
+                  </span>
+                </div>
+                
+                {(receipt.cash > 0 || receipt.transfer > 0 || receipt.card > 0) && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {receipt.cash > 0 && (
+                      <div className="order-summary-row">
+                        <span>Tiền mặt</span>
+                        <strong>{money(receipt.cash)}</strong>
+                      </div>
+                    )}
+                    {receipt.transfer > 0 && (
+                      <div className="order-summary-row">
+                        <span>Chuyển khoản</span>
+                        <strong>{money(receipt.transfer)}</strong>
+                      </div>
+                    )}
+                    {receipt.card > 0 && (
+                      <div className="order-summary-row">
+                        <span>Quẹt thẻ</span>
+                        <strong>{money(receipt.card)}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {receipt.note && (
                 <div className="order-summary-row">
                   <span>Ghi chú</span>
-                  <span>{receipt.note}</span>
+                  <span style={{ textAlign: "right", maxWidth: "65%" }}>{receipt.note}</span>
                 </div>
               )}
-
+              
               <div className="order-summary-row total">
                 <span>Tổng thanh toán</span>
-                <span>{money(receipt.total)}</span>
+                <span style={{ color: "var(--accent-bright)" }}>{money(receipt.total)}</span>
               </div>
             </div>
           </div>
@@ -1898,18 +1923,19 @@ export default function Manager() {
             <div className="receipt-divider" />
             <p className="receipt-footer">{data.settings.receipt_footer}</p>
           </div>
-          <div className="modal-actions">
-            <button className="secondary" onClick={() => setReceipt(null)}>
-              Đóng
+          <div style={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: 8, marginTop: 24 }}>
+            <button className="secondary" onClick={() => setReceipt(null)} style={{ flex: 1, justifyContent: "center", padding: "10px 4px" }}>
+              Quay về
             </button>
-            <button className="primary" onClick={() => window.print()}>
+            <button className="secondary" onClick={() => window.print()} style={{ flex: 1, justifyContent: "center", padding: "10px 4px" }}>
               <Printer size={17} />
-              In hóa đơn
+              <span className="hide-on-mobile" style={{ marginLeft: 6 }}>In bill</span>
             </button>
             {receipt.status === "completed" &&
               (admin || data.settings.allow_staff_cancel) && (
                 <button
                   className="danger-button"
+                  style={{ flex: 1, justifyContent: "center", padding: "10px 4px" }}
                   disabled={busy}
                   onClick={() => {
                     setReceipt(null);
@@ -2345,7 +2371,7 @@ function SettingsForm({
   onSave: (p: Record<string, unknown>) => void;
 }) {
   return (
-    <div className="settings-layout">
+    <div className="grid-layout">
       <form
         className="panel settings-form"
         onSubmit={(e) => {
@@ -2442,7 +2468,7 @@ function SettingsForm({
           <ShieldCheck size={24} />
           <h2>Nhật ký thao tác</h2>
           {data.audit.slice(0, 8).map((a) => (
-            <div className="audit-item" key={a.id}>
+            <div className="list-row small-text" style={{ color: "var(--muted)" }} key={a.id}>
               <strong>{a.action}</strong>
               <span>{date(a.created_at)}</span>
             </div>

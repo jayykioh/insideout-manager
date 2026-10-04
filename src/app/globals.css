@@ -80,9 +80,21 @@ html {
 * {
   box-sizing: border-box;
 }
-.operations-panel { display: grid; gap: 24px; margin-bottom: 24px; min-width: 0; }
-.operations-panel h2 { display: flex; align-items: center; gap: 8px; }
-.device-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+/* Layout Utilities */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.grid-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+.panel-group { display: grid; gap: 24px; margin-bottom: 24px; min-width: 0; }
+.panel-group h2 { display: flex; align-items: center; gap: 8px; }
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
 .payroll-period { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .payroll-period summary { cursor: pointer; padding: 12px 0; }
 .payroll-period .row-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
@@ -687,11 +699,7 @@ h1 {
   font-weight: 400;
   color: var(--text);
 }
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 17px 15px;
-}
+
 .product-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1198,11 +1206,7 @@ tbody tr:hover td:first-child {
   padding: 8px 4px;
   font-size: 12px;
 }
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-}
+
 .stat {
   padding: 25px;
   display: flex;
@@ -1247,25 +1251,33 @@ tbody tr:hover td:first-child {
   display: flex;
   gap: 12px;
   align-items: center;
+  min-width: 0;
+}
+.product-cell > div {
+  min-width: 0;
+  flex: 1;
 }
 .product-cell strong {
+  display: block;
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .product-cell small {
   display: block;
   color: var(--muted);
   font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .row-actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.staff-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-}
+
 .staff-card {
   padding: 24px;
 }
@@ -1311,11 +1323,7 @@ tbody tr:hover td:first-child {
 .report-toolbar .category-tabs {
   margin: 0;
 }
-.report-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 22px;
-}
+
 .chart-panel > p {
   padding: 20px;
 }
@@ -1351,30 +1359,8 @@ tbody tr:hover td:first-child {
   background: var(--accent);
   border-radius: var(--radius-sm) 5px 0 0;
 }
-.ranking {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 14px 22px;
-  border-bottom: 1px solid var(--border);
-}
-.ranking strong {
-  font-size: 12px;
-}
-.ranking small {
-  display: block;
-  color: var(--muted);
-  font-size: 10px;
-}
-.rank {
-  font-size: 12px;
-  color: var(--muted);
-}
-.settings-layout {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 24px;
-}
+
+
 .settings-form {
   padding: 28px;
   display: flex;
@@ -1397,17 +1383,7 @@ tbody tr:hover td:first-child {
   margin: 14px 0 22px;
   line-height: 1.8;
 }
-.audit-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 10px;
-}
-.audit-item span {
-  color: var(--muted);
-}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -2527,6 +2503,9 @@ tbody tr:hover td:first-child {
     padding: 8px 0 !important;
     text-align: right !important;
     gap: 12px;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
   }
   table td:last-child {
     border-bottom: 0;
@@ -2549,73 +2528,7 @@ tbody tr:hover td:first-child {
     display: none !important;
   }
   
-  /* Orders Table specific card layout */
-  table.orders-table {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  table.orders-table thead {
-    display: none;
-  }
-  table.orders-table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  table.orders-table tr {
-    display: grid;
-    grid-template-areas: 
-      "id total"
-      "time status"
-      "staff actions";
-    grid-template-columns: 1fr auto;
-    gap: 8px;
-    padding: 16px;
-    margin: 0;
-    align-items: center;
-  }
-  table.orders-table td {
-    display: flex;
-    border: none;
-    padding: 0 !important;
-    text-align: left !important;
-    justify-content: flex-start;
-  }
-  table.orders-table td::before {
-    display: none;
-  }
-  table.orders-table td[data-label="Mã đơn"] {
-    grid-area: id;
-  }
-  table.orders-table td[data-label="Mã đơn"] button {
-    font-size: 1.1em;
-    font-weight: 600;
-    text-decoration: none;
-    padding: 0;
-  }
-  table.orders-table td[data-label="Thời gian"] {
-    grid-area: time;
-    color: var(--muted);
-    font-size: 0.9em;
-  }
-  table.orders-table td[data-label="Nhân viên"] {
-    grid-area: staff;
-    color: var(--muted);
-    font-size: 0.9em;
-  }
-  table.orders-table td[data-label="Tổng cộng"] {
-    grid-area: total;
-    justify-content: flex-end;
-    font-weight: 700;
-    color: var(--primary);
-    font-size: 1.1em;
-  }
-  table.orders-table td[data-label="Trạng thái"] {
-    grid-area: status;
-    justify-content: flex-end;
-    gap: 8px;
-  }
+
 
   /* Products Table specific card layout */
   table.products-table {
@@ -2639,8 +2552,8 @@ tbody tr:hover td:first-child {
       "price cost"
       "actions actions";
     grid-template-columns: 1fr auto;
-    gap: 8px;
-    padding: 16px;
+    gap: 6px;
+    padding: 12px;
     margin: 0;
     align-items: center;
   }
@@ -3099,23 +3012,6 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
     white-space: nowrap;
   }
 
-  /* ── Modal — full bottom-sheet on mobile */
-  .modal {
-    position: fixed;
-    inset: auto 0 0;
-    width: 100%;
-    max-width: 100%;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 90dvh;
-    padding: 22px 20px;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
-    animation: modal-slide-up 240ms var(--ease-drawer);
-  }
-  @keyframes modal-slide-up {
-    from { transform: translateY(100%); opacity: 0.8; }
-    to   { transform: translateY(0);    opacity: 1;   }
-  }
-
   /* ── Icon buttons — ensure 44px minimum */
   .icon-button {
     min-width: 44px;
@@ -3464,4 +3360,23 @@ input:focus, select:focus {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--fg);
+}
+.clickable-card {
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease, box-shadow 160ms ease;
+  user-select: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .clickable-card:hover {
+    border-color: var(--accent);
+  }
+}
+.clickable-card:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 500px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
 }
