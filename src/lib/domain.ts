@@ -131,3 +131,51 @@ export function payroll(
     total: base + Math.round((sales * bonusPercent) / 100),
   };
 }
+
+export function readMoney(amount: number): string {
+  if (amount === 0) return "Không đồng";
+  
+  const units = ["", "nghìn", "triệu", "tỷ"];
+  const digits = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+
+  function readGroup(n: number, full: boolean) {
+    let res = "";
+    const h = Math.floor(n / 100);
+    const t = Math.floor((n % 100) / 10);
+    const o = n % 10;
+
+    if (full || h > 0) {
+      res += digits[h] + " trăm ";
+      if (t === 0 && o > 0) res += "lẻ ";
+    }
+
+    if (t === 1) res += "mười ";
+    else if (t > 1) res += digits[t] + " mươi ";
+
+    if (o === 1 && t > 1) res += "mốt";
+    else if (o === 4 && t > 1) res += "tư";
+    else if (o === 5 && t > 0) res += "lăm";
+    else if (o > 0 || (o === 0 && t === 0 && h === 0 && !full)) {
+      if (o > 0) res += digits[o];
+    }
+    return res.trim();
+  }
+
+  let res = "";
+  let i = 0;
+  let remaining = Math.floor(amount);
+
+  while (remaining > 0) {
+    const group = remaining % 1000;
+    remaining = Math.floor(remaining / 1000);
+    
+    if (group > 0) {
+      const groupText = readGroup(group, remaining > 0);
+      res = groupText + " " + units[i] + " " + res;
+    }
+    i++;
+  }
+
+  res = res.replace(/\s+/g, " ").trim();
+  return res.charAt(0).toUpperCase() + res.slice(1) + " đồng";
+}

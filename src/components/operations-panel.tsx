@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Snapshot, Command, PayrollLine } from "@/lib/types";
 import { businessDay, date, money } from "@/lib/domain";
+import { SmartMoneyInput } from "./shared/smart-money-input";
 import { calculatePeriod } from "@/lib/payroll";
 import {
   request,
@@ -189,7 +190,7 @@ export default function OperationsPanel({
             <form className="panel settings-form" onSubmit={approve}>
               <h2>Bảng lương dự kiến</h2>
               <div className="table-wrap" data-table="terminal">
-                <table>
+                <table className="payroll-table">
                   <thead>
                     <tr>
                       <th>Nhân viên</th>
@@ -203,12 +204,12 @@ export default function OperationsPanel({
                   <tbody>
                     {preview.map((l) => (
                       <tr key={l.user_id}>
-                        <td>{l.name}</td>
-                        <td>{(l.minutes / 60).toFixed(2)}</td>
-                        <td>{money(l.base)}</td>
-                        <td>{money(l.bonus)}</td>
-                        <td>
-                          <input
+                        <td data-label="Nhân viên">{l.name}</td>
+                        <td data-label="Giờ">{(l.minutes / 60).toFixed(2)}</td>
+                        <td data-label="Lương cơ bản">{money(l.base)}</td>
+                        <td data-label="Thưởng">{money(l.bonus)}</td>
+                        <td data-label="Điều chỉnh (₫)">
+                          <SmartMoneyInput
                             aria-label={"Điều chỉnh " + l.name}
                             name={"adjustment-" + l.user_id}
                             type="number"
@@ -216,7 +217,7 @@ export default function OperationsPanel({
                             style={{ minWidth: 120 }}
                           />
                         </td>
-                        <td>
+                        <td data-label="Lý do">
                           <input
                             aria-label={"Lý do " + l.name}
                             name={"note-" + l.user_id}
@@ -251,7 +252,7 @@ export default function OperationsPanel({
                   {p.status === "paid" ? "Đã thanh toán" : "Đã duyệt"}
                 </summary>
                 <div className="table-wrap" data-table="terminal">
-                  <table>
+                  <table className="payroll-table">
                     <thead>
                       <tr>
                         <th>Nhân viên</th>
@@ -264,11 +265,13 @@ export default function OperationsPanel({
                     <tbody>
                       {p.lines.map((l) => (
                         <tr key={l.user_id}>
-                          <td>{l.name}</td>
-                          <td>{money(l.base)}</td>
-                          <td>{money(l.bonus)}</td>
-                          <td title={l.note}>{money(l.adjustment)}</td>
-                          <td>{money(l.total)}</td>
+                          <td data-label="Nhân viên">{l.name}</td>
+                          <td data-label="Lương">{money(l.base)}</td>
+                          <td data-label="Thưởng">{money(l.bonus)}</td>
+                          <td data-label="Điều chỉnh" title={l.note}>
+                            {money(l.adjustment)}
+                          </td>
+                          <td data-label="Thực nhận">{money(l.total)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -366,7 +369,7 @@ export default function OperationsPanel({
                 </select>
               </Field>
               <Field label="Lương theo giờ (₫)">
-                <input
+                <SmartMoneyInput
                   key={selected}
                   type="number"
                   name="hourly_rate"
@@ -411,9 +414,11 @@ export default function OperationsPanel({
                     .filter((r) => r.user_id === selected)
                     .map((r) => (
                       <tr key={r.id}>
-                        <td>{date(r.effective_at)}</td>
-                        <td>{money(r.hourly_rate)}</td>
-                        <td>{r.bonus_percent}%</td>
+                        <td data-label="Có hiệu lực">{date(r.effective_at)}</td>
+                        <td data-label="Lương theo giờ">
+                          {money(r.hourly_rate)}
+                        </td>
+                        <td data-label="Thưởng doanh số">{r.bonus_percent}%</td>
                       </tr>
                     ))}
                 </tbody>
@@ -502,8 +507,8 @@ export default function OperationsPanel({
                 Đặt PIN & mở khóa
               </button>
               <p className="form-hint">
-                PIN quản lý được xác minh lại trước khi thay đổi hoặc mở khóa
-                hồ sơ.
+                PIN quản lý được xác minh lại trước khi thay đổi hoặc mở khóa hồ
+                sơ.
               </p>
             </form>
             <AssetUpload data={data} kind="avatar" onReload={onReload} />
@@ -521,15 +526,17 @@ export default function OperationsPanel({
                 const f = new FormData(form);
                 run(async () => {
                   if (isDemo()) {
-                    throw Error("Không hỗ trợ tạo nhân viên trong chế độ dùng thử.");
+                    throw Error(
+                      "Không hỗ trợ tạo nhân viên trong chế độ dùng thử.",
+                    );
                   }
                   await onSave({
                     type: "member",
                     payload: {
-                    name: f.get("name"),
-                    pin: f.get("pin"),
-                    hourly_rate: 25000,
-                    role: "staff",
+                      name: f.get("name"),
+                      pin: f.get("pin"),
+                      hourly_rate: 25000,
+                      role: "staff",
                     },
                   });
                   form.reset();
@@ -538,12 +545,27 @@ export default function OperationsPanel({
               }}
             >
               <Field label="Tên nhân viên">
-                <input type="text" name="name" required placeholder="Nguyễn Văn B" />
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="Nguyễn Văn B"
+                />
               </Field>
               <Field label="Mã PIN (4 đến 6 số)">
-                <input type="password" name="pin" inputMode="numeric" pattern="[0-9]{4,6}" required />
+                <input
+                  type="password"
+                  name="pin"
+                  inputMode="numeric"
+                  pattern="[0-9]{4,6}"
+                  required
+                />
               </Field>
-              <button className="primary" disabled={busy} data-state={busy ? "loading" : undefined}>
+              <button
+                className="primary"
+                disabled={busy}
+                data-state={busy ? "loading" : undefined}
+              >
                 Tạo tài khoản
               </button>
             </form>
@@ -551,7 +573,7 @@ export default function OperationsPanel({
         </div>
       )}
       {path === "/admin/attendance" && (
-        <section className="panel settings-form">
+        <section className="panel settings-form" style={{ maxWidth: 640 }}>
           <h2>
             <Clock size={18} /> Điều chỉnh chấm công
           </h2>
@@ -581,12 +603,16 @@ export default function OperationsPanel({
           >
             <Field label="Ca cần điều chỉnh">
               <select name="id" required disabled={closed.length === 0}>
-                {closed.length === 0 ? <option>Chưa có dữ liệu</option> : closed.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {data.members.find((m) => m.id === s.user_id)?.name} ·{" "}
-                    {date(s.started_at)}
-                  </option>
-                ))}
+                {closed.length === 0 ? (
+                  <option>Chưa có dữ liệu</option>
+                ) : (
+                  closed.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {data.members.find((m) => m.id === s.user_id)?.name} ·{" "}
+                      {date(s.started_at)}
+                    </option>
+                  ))
+                )}
               </select>
             </Field>
             <div className="form-grid">
@@ -615,38 +641,131 @@ export default function OperationsPanel({
           <h2>Hình ảnh sản phẩm</h2>
           <AssetUpload data={data} kind="product" onReload={onReload} />
           <h2>Lịch sử tồn kho</h2>
-          <div className="table-wrap" data-table="terminal">
-            <table className="inventory-table">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Sản phẩm</th>
-                  <th>Thay đổi</th>
-                  <th>Lý do</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.movements.slice(0, 100).map((m) => (
-                  <tr key={m.id}>
-                    <td data-label="Thời gian">{date(m.created_at)}</td>
-                    <td data-label="Sản phẩm">
-                      <span className="badge">
-                        <Package size={14} />
-                        {data.products.find((p) => p.id === m.product_id)?.name}
+          <div
+            style={{ display: "flex", flexDirection: "column", marginTop: 16 }}
+          >
+            {data.movements.slice(0, 100).map((m, index, arr) => {
+              const isPositive = m.quantity > 0;
+              const isNegative = m.quantity < 0;
+              const productName =
+                data.products.find((p) => p.id === m.product_id)?.name ||
+                "Sản phẩm không xác định";
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 16,
+                    padding: "16px 0",
+                    borderBottom:
+                      index < arr.length - 1
+                        ? "1px solid var(--border)"
+                        : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      background: isPositive
+                        ? "rgba(16, 185, 129, 0.1)"
+                        : isNegative
+                          ? "rgba(239, 68, 68, 0.1)"
+                          : "var(--surface)",
+                      color: isPositive
+                        ? "#10b981"
+                        : isNegative
+                          ? "#ef4444"
+                          : "var(--muted)",
+                    }}
+                  >
+                    <ArrowRightLeft size={18} />
+                  </div>
+
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: "var(--fg)",
+                          wordBreak: "break-word",
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {productName}
                       </span>
-                    </td>
-                    <td data-label="Thay đổi">
-                      <span className={`badge ${m.quantity > 0 ? 'success' : m.quantity < 0 ? 'danger' : ''}`}>
-                        <ArrowRightLeft size={14} />
-                        {m.quantity > 0 ? "+" : ""}
+                      <span
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 700,
+                          fontVariantNumeric: "tabular-nums",
+                          flexShrink: 0,
+                          color: isPositive
+                            ? "#10b981"
+                            : isNegative
+                              ? "#ef4444"
+                              : "var(--fg)",
+                        }}
+                      >
+                        {isPositive ? "+" : ""}
                         {m.quantity}
                       </span>
-                    </td>
-                    <td data-label="Lý do">{m.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: "var(--fg)",
+                          opacity: 0.85,
+                        }}
+                      >
+                        {m.reason}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {date(m.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -655,7 +774,8 @@ export default function OperationsPanel({
           <section className="panel settings-form">
             <h2>Cài đặt cửa hàng</h2>
             <p className="muted small-text">
-              Thông tin cửa hàng sẽ hiển thị trên ứng dụng và hóa đơn in cho khách.
+              Thông tin cửa hàng sẽ hiển thị trên ứng dụng và hóa đơn in cho
+              khách.
             </p>
             <form
               className="stack-form"
@@ -667,7 +787,9 @@ export default function OperationsPanel({
                   s.name = String(f.get("name") || "").trim();
                   s.address = String(f.get("address") || "").trim();
                   s.phone = String(f.get("phone") || "").trim();
-                  s.receipt_footer = String(f.get("receipt_footer") || "").trim();
+                  s.receipt_footer = String(
+                    f.get("receipt_footer") || "",
+                  ).trim();
                   if (await onSave({ type: "settings", payload: s })) {
                     await onReload();
                   }
@@ -675,18 +797,36 @@ export default function OperationsPanel({
               }}
             >
               <Field label="Tên cửa hàng">
-                <input name="name" required defaultValue={data.settings.name} maxLength={100} />
+                <input
+                  name="name"
+                  required
+                  defaultValue={data.settings.name}
+                  maxLength={100}
+                />
               </Field>
               <Field label="Địa chỉ">
-                <input name="address" defaultValue={data.settings.address} maxLength={200} />
+                <input
+                  name="address"
+                  defaultValue={data.settings.address}
+                  maxLength={200}
+                />
               </Field>
               <div className="form-grid">
                 <Field label="Số điện thoại">
-                  <input name="phone" defaultValue={data.settings.phone} maxLength={30} />
+                  <input
+                    name="phone"
+                    defaultValue={data.settings.phone}
+                    maxLength={30}
+                  />
                 </Field>
               </div>
               <Field label="Lời chúc cuối hóa đơn">
-                <textarea name="receipt_footer" defaultValue={data.settings.receipt_footer} maxLength={300} rows={3} />
+                <textarea
+                  name="receipt_footer"
+                  defaultValue={data.settings.receipt_footer}
+                  maxLength={300}
+                  rows={3}
+                />
               </Field>
               <button
                 className="primary"
@@ -697,7 +837,7 @@ export default function OperationsPanel({
               </button>
             </form>
           </section>
-          
+
           <section className="panel settings-form">
             <h2>Đối soát đơn chờ đồng bộ</h2>
             <p className="muted small-text">
@@ -721,7 +861,10 @@ export default function OperationsPanel({
                   }}
                 >
                   <strong>
-                    {money(q.payload.cash + q.payload.transfer + q.payload.card)} ·{" "}
+                    {money(
+                      q.payload.cash + q.payload.transfer + q.payload.card,
+                    )}{" "}
+                    ·{" "}
                     {data.members.find((m) => m.id === q.actor_id)?.name ||
                       q.actor_id}
                   </strong>
@@ -739,9 +882,7 @@ export default function OperationsPanel({
                 </form>
               ))}
             {!queue.length && (
-              <p className="muted">
-                Không có đơn cần chờ đối soát thủ công.
-              </p>
+              <p className="muted">Không có đơn cần chờ đối soát thủ công.</p>
             )}
           </section>
         </div>
@@ -836,11 +977,15 @@ function AssetUpload({
     >
       <Field label={kind === "product" ? "Sản phẩm" : "Hồ sơ"}>
         <select name="id" required disabled={items.length === 0}>
-          {items.length === 0 ? <option>Chưa có dữ liệu</option> : items.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.name}
-            </option>
-          ))}
+          {items.length === 0 ? (
+            <option>Chưa có dữ liệu</option>
+          ) : (
+            items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))
+          )}
         </select>
       </Field>
       <Field label="Ảnh vuông (tự cắt giữa ảnh)">

@@ -60,7 +60,8 @@ import type {
   Member,
   Checkout,
 } from "@/lib/types";
-import { businessDay, date, expectedCash, money, payroll } from "@/lib/domain";
+import { businessDay, date, expectedCash, money, payroll, readMoney } from "@/lib/domain";
+import { SmartMoneyInput } from "./shared/smart-money-input";
 import {
   demoLogin,
   execute,
@@ -149,6 +150,7 @@ export default function Manager() {
 
   const [discount, setDiscount] = useState("");
   const [note, setNote] = useState("");
+  const [showNote, setShowNote] = useState(false);
   const [method, setMethod] = useState<"cash" | "transfer" | "card">("cash");
   const [receipt, setReceipt] = useState<Order | null>(null);
   const [editPayment, setEditPayment] = useState<Order | null>(null);
@@ -235,6 +237,11 @@ export default function Manager() {
     return () => {
       alive = false;
     };
+  }, [path, router]);
+  useEffect(() => {
+    if (path === "/") {
+      router.replace("/pos");
+    }
   }, [path, router]);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -392,7 +399,6 @@ export default function Manager() {
     router.push("/profiles");
   }
   if (path === "/") {
-    if (typeof window !== "undefined") router.replace("/pos");
     return null;
   }
   if (path === "/login" || path === "/profiles")
@@ -644,10 +650,10 @@ export default function Manager() {
     <>
       <div className="cart-heading">
         <div>
-          <h2 style={{ fontFamily: "monospace", letterSpacing: "1px" }}>
-            NEW_ORDER
+          <h2 style={{ fontSize: "16px", fontWeight: 600 }}>
+            Đơn hàng mới
           </h2>
-          <span>{itemCount} sản phẩm</span>
+          <span style={{ fontSize: "12px", marginTop: "2px", display: "block" }}>{itemCount} sản phẩm đang chọn</span>
         </div>
         <IconButton
           label="Xóa giỏ hàng"
@@ -661,7 +667,7 @@ export default function Manager() {
             });
           }}
         >
-          <Trash2 size={17} />
+          <Trash2 size={18} />
         </IconButton>
       </div>
       <div className="cart-lines">
@@ -677,25 +683,25 @@ export default function Manager() {
                     aria-label={"Giảm " + p.name}
                     onClick={() => changeQty(p.id, -1)}
                   >
-                    <Minus size={12} />
+                    <Minus size={14} />
                   </button>
                   <b>{quantity}</b>
                   <button
                     aria-label={"Tăng " + p.name}
                     onClick={() => changeQty(p.id, 1)}
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                   </button>
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                <span className="money" style={{ fontSize: "10px", marginTop: "2px", whiteSpace: "nowrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                <span className="money" style={{ fontSize: "12px", fontWeight: 500, whiteSpace: "nowrap" }}>
                   {money(price * quantity)}
                 </span>
                 {admin && (
                   <button
                     className="text-button"
-                    style={{ fontSize: "10px", padding: "4px 0 0", color: "var(--muted)" }}
+                    style={{ fontSize: "11px", color: "var(--muted)", padding: "2px 0" }}
                     onClick={() => {
                       const val = window.prompt(`Sửa giá cho ${p.name}:`, String(price));
                       if (val !== null) {
@@ -706,8 +712,7 @@ export default function Manager() {
                       }
                     }}
                   >
-                    <Pencil size={10} style={{ marginRight: 3 }} />
-                    Sửa giá
+                    <Pencil size={11} style={{ marginRight: 4 }} /> Sửa giá
                   </button>
                 )}
               </div>
@@ -721,35 +726,50 @@ export default function Manager() {
         )}
       </div>
       <div className="cart-bottom">
-        <div className="summary-row">
-          <span>Tạm tính</span>
-          <span>{money(subtotal)}</span>
-        </div>
-        <div className="summary-row">
-          <span>Số lượng</span>
-          <span>{itemCount} sản phẩm</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <div className="summary-row" style={{ color: "var(--muted)", fontSize: "12px" }}>
+            <span>Tạm tính</span>
+            <span style={{ fontWeight: 700, color: "var(--text)", fontSize: "14px" }}>{money(subtotal)}</span>
+          </div>
+          <div className="summary-row" style={{ color: "var(--muted)", fontSize: "12px" }}>
+            <span>Số lượng</span>
+            <span style={{ fontWeight: 600, color: "var(--text)" }}>{itemCount} sản phẩm</span>
+          </div>
         </div>
         
         <div className="cart-fields">
           <Field label="Giảm giá (₫)">
-            <input
+            <SmartMoneyInput
               type="number"
               min="0"
               max={subtotal}
               value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
+              onValueChange={setDiscount}
               placeholder="Nhập số tiền giảm..."
+              style={{ fontSize: "14px" }}
             />
           </Field>
-          <Field label="Ghi chú">
-            <input
-              type="text"
-              placeholder="VD: Khách hàng VIP..."
-              value={note}
-              maxLength={500}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </Field>
+          {showNote || note ? (
+            <Field label="Ghi chú">
+              <input
+                type="text"
+                placeholder="VD: Khách hàng VIP..."
+                value={note}
+                maxLength={500}
+                onChange={(e) => setNote(e.target.value)}
+                style={{ fontSize: "14px" }}
+                autoFocus={!note}
+              />
+            </Field>
+          ) : (
+            <button 
+              className="text-button" 
+              style={{ fontSize: "12px", padding: 0, justifyContent: "flex-start", color: "var(--muted)" }}
+              onClick={() => setShowNote(true)}
+            >
+              + Thêm ghi chú
+            </button>
+          )}
         </div>
 
         <div className="payment-methods cart-payment-methods">
@@ -761,56 +781,58 @@ export default function Manager() {
             <button
               key={v}
               className={method === v ? "selected" : ""}
+              style={{ padding: "6px 4px", fontSize: "11px", gap: "2px" }}
               onClick={() => {
                 setMethod(v as "cash" | "transfer" | "card");
                 if (v === "transfer") setModal("qr");
               }}
             >
-              <CreditCard size={16} />
+              <CreditCard size={14} style={{ marginBottom: "2px" }} />
               {l}
             </button>
           ))}
         </div>
 
         {method === "transfer" && (
-          <div style={{ textAlign: "center", marginBottom: 10 }}>
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
             <img 
               src="/qr-code-transfer.jpg" 
               alt="QR Code" 
               style={{ width: "100%", maxWidth: "160px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer", display: "block", margin: "0 auto" }}
               onClick={() => setModal("qr")}
             />
-            <p className="form-hint" style={{ marginTop: 8 }}>
+            <p className="form-hint" style={{ marginTop: 8, fontSize: "11px" }}>
               Kiểm tra tiền đã vào tài khoản trước khi xác nhận.
             </p>
           </div>
         )}
 
-        <div className="total-row">
+        <div className="total-row" style={{ fontSize: "16px", marginTop: "4px", marginBottom: "0" }}>
           <strong>Tổng cộng</strong>
           <strong>{money(total)}</strong>
         </div>
+        <div style={{ textAlign: "right", fontSize: "12px", color: "var(--muted)", fontStyle: "italic", marginBottom: "8px", marginTop: "2px" }}>
+          ({readMoney(total)})
+        </div>
         
         {error && (
-          <p role="alert" className="form-error" style={{ marginBottom: 10 }}>
+          <p role="alert" className="form-error" style={{ marginBottom: 12 }}>
             {error}
           </p>
         )}
 
-        <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
           <button 
             className="secondary" 
-            style={{ flex: 1, padding: "14px 12px", fontSize: "13px" }} 
-            onClick={() => {
-              window.print();
-            }}
+            style={{ flex: 1, padding: "10px 12px", fontSize: "13px", fontWeight: 500, justifyContent: "center" }} 
+            onClick={() => window.print()}
             disabled={!itemCount}
           >
-            <Printer size={16} style={{ marginRight: 4 }} /> In bill
+            <Printer size={16} style={{ marginRight: 6 }} /> In bill
           </button>
           <button
             className="primary checkout-button"
-            style={{ flex: 2, padding: "14px 12px" }}
+            style={{ flex: 1.5, padding: "10px 12px", fontSize: "13px", fontWeight: 500, justifyContent: "center" }}
             disabled={!itemCount || busy}
             data-state={busy ? "loading" : undefined}
             onClick={() => {
@@ -825,8 +847,8 @@ export default function Manager() {
           </button>
         </div>
         
-        <p className="secure-note" style={{ marginTop: 15 }}>
-          <ShieldCheck size={12} />{" "}
+        <p className="secure-note" style={{ marginTop: 16, fontSize: "11px", color: "var(--muted)" }}>
+          <ShieldCheck size={14} style={{ marginRight: 4 }} />
           Giao dịch được ghi nhận an toàn
         </p>
       </div>
@@ -1046,7 +1068,7 @@ export default function Manager() {
                         Sắp xếp: <b>Mặc định</b>
                       </span>
                     </div>
-                    <div className="grid-3">
+                    <div className="product-grid">
                       {selected.map((p) => (
                         <button
                           disabled={p.stock <= 0}
@@ -1965,15 +1987,15 @@ export default function Manager() {
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Tiền mặt</label>
-                <input type="number" className="input" style={{ width: "100%" }} value={editCash} onChange={e => setEditCash(e.target.value)} />
+                <SmartMoneyInput type="number" className="input" style={{ width: "100%" }} value={editCash} onValueChange={setEditCash} />
               </div>
               <div>
                 <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Chuyển khoản</label>
-                <input type="number" className="input" style={{ width: "100%" }} value={editTransfer} onChange={e => setEditTransfer(e.target.value)} />
+                <SmartMoneyInput type="number" className="input" style={{ width: "100%" }} value={editTransfer} onValueChange={setEditTransfer} />
               </div>
               <div>
                 <label style={{ display: "block", marginBottom: 4, fontSize: 13, color: "var(--muted)" }}>Quẹt thẻ</label>
-                <input type="number" className="input" style={{ width: "100%" }} value={editCard} onChange={e => setEditCard(e.target.value)} />
+                <SmartMoneyInput type="number" className="input" style={{ width: "100%" }} value={editCard} onValueChange={setEditCard} />
               </div>
             </div>
           </div>
@@ -2106,7 +2128,7 @@ export default function Manager() {
             {modal === "expense" && (
               <>
                 <Field label="Số tiền (₫)">
-                  <input name="amount" type="number" min="1" required />
+                  <SmartMoneyInput name="amount" type="number" min="1" required />
                 </Field>
                 <Field label="Danh mục">
                   <select name="category">
@@ -2136,7 +2158,7 @@ export default function Manager() {
                   />
                 </Field>
                 <Field label="Lương theo giờ (₫)">
-                  <input
+                  <SmartMoneyInput
                     name="hourly_rate"
                     type="number"
                     min="0"
@@ -2175,7 +2197,7 @@ export default function Manager() {
                   Thời gian chấm công sẽ được ghi nhận khi bắt đầu ca.
                 </p>
                 <Field label="Tiền mặt đầu ca (₫)">
-                  <input
+                  <SmartMoneyInput
                     name="opening_cash"
                     type="number"
                     min="0"
@@ -2194,7 +2216,7 @@ export default function Manager() {
                   </strong>
                 </div>
                 <Field label="Tiền mặt kiểm đếm thực tế (₫)">
-                  <input name="actual_cash" type="number" min="0" required />
+                  <SmartMoneyInput name="actual_cash" type="number" min="0" required />
                 </Field>
                 <Field label="Ghi chú đối soát">
                   <textarea

@@ -115,23 +115,17 @@ export default function Reports({ data }: { data: Snapshot }) {
             </button>
             <button
               style={{ 
-                background: from === businessDay(new Date(Date.parse(today + "T12:00:00+07:00") - 6 * 86400000).toISOString()) && to === today ? "var(--bg)" : "transparent",
-                color: from === businessDay(new Date(Date.parse(today + "T12:00:00+07:00") - 6 * 86400000).toISOString()) && to === today ? "var(--fg)" : "var(--muted)",
-                boxShadow: from === businessDay(new Date(Date.parse(today + "T12:00:00+07:00") - 6 * 86400000).toISOString()) && to === today ? "0 2px 5px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02)" : "none",
+                background: from === "2020-01-01" && to === today ? "var(--bg)" : "transparent",
+                color: from === "2020-01-01" && to === today ? "var(--fg)" : "var(--muted)",
+                boxShadow: from === "2020-01-01" && to === today ? "0 2px 5px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02)" : "none",
                 border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 200ms ease-out, color 200ms ease-out, box-shadow 200ms ease-out" 
               }}
               onClick={() => {
-                setFrom(
-                  businessDay(
-                    new Date(
-                      Date.parse(today + "T12:00:00+07:00") - 6 * 86400000,
-                    ).toISOString(),
-                  ),
-                );
+                setFrom("2020-01-01");
                 setTo(today);
               }}
             >
-              7 ngày
+              Toàn bộ
             </button>
             <button
               style={{ 
@@ -150,7 +144,7 @@ export default function Reports({ data }: { data: Snapshot }) {
           </div>
           <button className="secondary" style={{ flexShrink: 0, padding: "6px 14px", fontSize: 13, height: 32, gap: 6, border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 8 }} onClick={exportCsv}>
             <Download size={14} />
-            Tải CSV
+            <span className="hide-on-mobile">Tải CSV</span>
           </button>
         </div>
       </div>
@@ -183,106 +177,140 @@ export default function Reports({ data }: { data: Snapshot }) {
         Kết quả vận hành = doanh thu − giá vốn tại thời điểm bán − chi phí ghi
         nhận. Chưa trừ lương nếu chưa được ghi thành khoản chi.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 24, marginBottom: 24 }}>
         <section className="panel" style={{ overflow: "hidden" }}>
           <div className="section-toolbar">
             <h2>Doanh thu theo ngày</h2>
           </div>
           {days.length ? (
-            <>
-              <div style={{ overflowX: "auto", margin: "0 -20px", padding: "0 20px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-                <div className="bar-chart" aria-hidden="true" style={{ minWidth: Math.max(days.slice(-14).length * 40, 500) }}>
-                  {days.slice(-14).map((d) => (
-                    <div className="bar-column" key={d.day}>
-                      <span style={{ whiteSpace: "nowrap" }}>{money(d.revenue)}</span>
-                      <div
-                        className="bar"
-                        style={{
-                          height: Math.max(
-                            3,
-                            (d.revenue /
-                              Math.max(1, ...days.map((x) => x.revenue))) *
-                              150,
-                          ),
-                          width: "100%",
-                          maxWidth: 32,
-                          margin: "0 auto",
-                          background: "var(--accent)",
-                          borderRadius: "4px 4px 0 0"
-                        }}
-                      />
-                      <small>{d.day.slice(5)}</small>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {days.slice().reverse().map((d, index, arr) => {
+                const maxRev = Math.max(1, ...days.map(x => x.revenue));
+                const pct = Math.max(2, (d.revenue / maxRev) * 100);
+                const dayNum = d.day.slice(8, 10);
+                const monthNum = d.day.slice(5, 7);
+                return (
+                  <div
+                    key={d.day}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "44px 1fr auto",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "11px 20px",
+                      borderBottom: index < arr.length - 1 ? "1px solid var(--border)" : "none",
+                    }}
+                  >
+                    {/* Date pill */}
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      background: "var(--raised)",
+                      borderRadius: 8,
+                      padding: "5px 4px",
+                      lineHeight: 1.2,
+                    }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: "var(--fg)", fontVariantNumeric: "tabular-nums" }}>{dayNum}</span>
+                      <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>/{monthNum}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", marginTop: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", paddingBottom: 12, borderBottom: "1px solid var(--border)", fontSize: 12, color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  <div style={{ flexBasis: 50, flexShrink: 0 }}>Ngày</div>
-                  <div style={{ flex: 1, paddingLeft: 16 }}>Biểu đồ & Số đơn</div>
-                  <div style={{ flexBasis: 110, flexShrink: 0, textAlign: "right" }}>Doanh thu</div>
-                </div>
 
-                {days.slice().reverse().map((d, index, arr) => {
-                  const maxRev = Math.max(1, ...days.map(x => x.revenue));
-                  const percent = Math.max(1, (d.revenue / maxRev) * 100);
-                  
-                  return (
-                    <div key={d.day} style={{ display: "flex", alignItems: "center", padding: "14px 0", borderBottom: index < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      
-                      <div style={{ flexBasis: 50, flexShrink: 0, fontSize: 14, fontWeight: 600, color: "var(--fg)" }}>
-                        {d.day.slice(8,10)}/{d.day.slice(5,7)}
+                    {/* Progress bar + count */}
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                      <div style={{ height: 6, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%",
+                          width: `${pct}%`,
+                          background: "linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #ff9060))",
+                          borderRadius: 4,
+                          transition: "width 500ms cubic-bezier(0.16, 1, 0.3, 1)",
+                        }} />
                       </div>
-                      
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, padding: "0 16px" }}>
-                        <div style={{ flex: 1, maxWidth: 160, height: 6, background: "var(--surface)", borderRadius: 4, overflow: "hidden" }}>
-                           <div style={{ height: "100%", width: "100%", transform: `scaleX(${percent / 100})`, transformOrigin: "left", background: "var(--accent)", borderRadius: 4, transition: "transform 400ms cubic-bezier(0.16, 1, 0.3, 1)" }} />
-                        </div>
-                        <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 500, flexShrink: 0 }}>
-                          {d.count} đơn
-                        </span>
-                      </div>
-
-                      <div className="money" style={{ flexBasis: 110, flexShrink: 0, textAlign: "right", fontSize: 15, fontWeight: 600, color: "var(--fg)" }}>
-                        {money(d.revenue)}
-                      </div>
-
+                      <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 500 }}>
+                        {d.count} đơn
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            </>
+
+                    {/* Revenue */}
+                    <div className="money" style={{ fontSize: 14, fontWeight: 650, color: "var(--fg)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                      {money(d.revenue)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <p className="empty">Chưa có giao dịch trong kỳ này.</p>
           )}
         </section>
+
         <section className="panel">
           <div className="section-toolbar">
             <h2>Sản phẩm bán chạy</h2>
           </div>
-          <div className="table-wrap" data-table="terminal">
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>Sản phẩm</th>
-                  <th>Đã bán</th>
-                  <th>Doanh thu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {top.slice(0, 20).map((p) => (
-                  <tr key={p.name}>
-                    <td data-label="Sản phẩm">{p.name}</td>
-                    <td data-label="Đã bán">{p.quantity}</td>
-                    <td className="money" data-label="Doanh thu">{money(p.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {top.length ? (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {top.slice(0, 10).map((p, i) => {
+                const maxTotal = Math.max(1, top[0].total);
+                const pct = Math.max(2, (p.total / maxTotal) * 100);
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div
+                    key={p.name}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "24px 1fr auto",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "11px 20px",
+                      borderBottom: i < Math.min(top.length, 10) - 1 ? "1px solid var(--border)" : "none",
+                    }}
+                  >
+                    {/* Rank */}
+                    <span style={{ fontSize: i < 3 ? 16 : 12, textAlign: "center", color: i < 3 ? "inherit" : "var(--muted)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                      {i < 3 ? medals[i] : `${i + 1}`}
+                    </span>
+
+                    {/* Name + progress bar */}
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                      <span style={{ fontSize: 13, fontWeight: 550, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {p.name}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, height: 4, background: "var(--surface)", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: i === 0
+                              ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
+                              : i === 1
+                                ? "linear-gradient(90deg, #94a3b8, #cbd5e1)"
+                                : i === 2
+                                  ? "linear-gradient(90deg, #b45309, #d97706)"
+                                  : "var(--accent)",
+                            borderRadius: 3,
+                            transition: "width 500ms cubic-bezier(0.16, 1, 0.3, 1)",
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{p.quantity} cái</span>
+                      </div>
+                    </div>
+
+                    {/* Revenue */}
+                    <div className="money" style={{ fontSize: 13, fontWeight: 650, color: "var(--fg)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                      {money(p.total)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="empty">Chưa có dữ liệu bán hàng.</p>
+          )}
         </section>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 24 }}>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 24, marginBottom: 24 }}>
         <section className="panel settings-form">
           <h2>Phương thức thanh toán</h2>
           <div className="summary-row">
@@ -298,36 +326,50 @@ export default function Reports({ data }: { data: Snapshot }) {
           <div className="section-toolbar">
             <h2>Doanh số nhân viên</h2>
           </div>
-          <div className="table-wrap" data-table="terminal">
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>Nhân viên</th>
-                  <th>Số đơn</th>
-                  <th>Doanh số</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.members.map((m) => (
-                  <tr key={m.id}>
-                    <td data-label="Nhân viên">
-                      <span className="badge">
-                        <UserCircle size={14} />
-                        {m.name}
-                      </span>
-                    </td>
-                    <td data-label="Số đơn">{orders.filter((o) => o.user_id === m.id).length}</td>
-                    <td className="money" data-label="Doanh số">
-                      {money(
-                        orders
-                          .filter((o) => o.user_id === m.id)
-                          .reduce((n, o) => n + o.total, 0),
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {data.members.map((m, i) => {
+              const memberOrders = orders.filter((o) => o.user_id === m.id);
+              const memberTotal = memberOrders.reduce((n, o) => n + o.total, 0);
+              const maxMemberTotal = Math.max(1, ...data.members.map(mm =>
+                orders.filter(o => o.user_id === mm.id).reduce((n, o) => n + o.total, 0)
+              ));
+              const pct = Math.max(2, (memberTotal / maxMemberTotal) * 100);
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "11px 20px",
+                    borderBottom: i < data.members.length - 1 ? "1px solid var(--border)" : "none",
+                  }}
+                >
+                  <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <UserCircle size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 550, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 4, background: "var(--surface)", borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%",
+                          width: `${pct}%`,
+                          background: "var(--accent)",
+                          borderRadius: 3,
+                          transition: "width 500ms cubic-bezier(0.16, 1, 0.3, 1)",
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{memberOrders.length} đơn</span>
+                    </div>
+                  </div>
+                  <div className="money" style={{ fontSize: 14, fontWeight: 650, color: "var(--fg)", textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    {money(memberTotal)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>

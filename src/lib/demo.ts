@@ -64,7 +64,8 @@ export function seed(): Snapshot {
   };
 }
 export function reduceCommand(source: Snapshot, command: Command): Snapshot {
-  const extra=operations(source,command);if(extra)return extra;
+  const extra = operations(source, command);
+  if (extra) return extra;
   const s = structuredClone(source);
   const p = command.payload;
   const admin = s.user.role === "admin";
@@ -83,9 +84,34 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
   switch (command.type) {
     case "checkout": {
       const c = checkoutSchema.parse(p);
-      const previous=s.orders.find((o)=>o.id===c.id);
-      if(previous){
-        if(previous.user_id!==s.user.id||previous.shift_id!==c.shift_id||previous.cash!==c.cash||previous.transfer!==c.transfer||previous.card!==c.card||previous.payment_method!==c.payment_method||previous.discount!==c.discount||previous.note!==c.note||previous.created_at!==c.occurred_at||JSON.stringify(previous.lines.map(({product_id,quantity,price})=>({product_id,quantity,price})))!==JSON.stringify(c.lines.map(({product_id,quantity,price})=>({product_id,quantity,price}))))throw Error("Mã đơn đã được dùng cho nội dung khác.");
+      const previous = s.orders.find((o) => o.id === c.id);
+      if (previous) {
+        if (
+          previous.user_id !== s.user.id ||
+          previous.shift_id !== c.shift_id ||
+          previous.cash !== c.cash ||
+          previous.transfer !== c.transfer ||
+          previous.card !== c.card ||
+          previous.payment_method !== c.payment_method ||
+          previous.discount !== c.discount ||
+          previous.note !== c.note ||
+          previous.created_at !== c.occurred_at ||
+          JSON.stringify(
+            previous.lines.map(({ product_id, quantity, price }) => ({
+              product_id,
+              quantity,
+              price,
+            })),
+          ) !==
+            JSON.stringify(
+              c.lines.map(({ product_id, quantity, price }) => ({
+                product_id,
+                quantity,
+                price,
+              })),
+            )
+        )
+          throw Error("Mã đơn đã được dùng cho nội dung khác.");
         return s;
       }
       const shift = s.shifts.find(
@@ -119,7 +145,13 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
         shift_id: c.shift_id,
         created_at: c.occurred_at,
         total: c.cash + c.transfer + c.card,
-        cost_total:c.lines.reduce((n,l)=>n+(s.products.find(x=>x.id===l.product_id)?.cost||0)*l.quantity,0),
+        cost_total: c.lines.reduce(
+          (n, l) =>
+            n +
+            (s.products.find((x) => x.id === l.product_id)?.cost || 0) *
+              l.quantity,
+          0,
+        ),
         cash: c.cash,
         transfer: c.transfer,
         card: c.card,
@@ -195,7 +227,7 @@ export function reduceCommand(source: Snapshot, command: Command): Snapshot {
         expected_cash: expected,
         note: String(p.note || ""),
         ended_at: now,
-        status: "submitted",
+        status: "approved",
       });
       audit("close_shift", shift.id);
       break;
@@ -325,19 +357,24 @@ export function staffSnapshot(s: Snapshot): Snapshot {
       void cost;
       return p;
     }),
-    orders: s.orders.filter(
-      (o) => o.user_id === s.user.id && o.shift_id === shift?.id,
-    ).map(({cost_total,...o})=>{void cost_total;return o;}),
+    orders: s.orders
+      .filter((o) => o.user_id === s.user.id && o.shift_id === shift?.id)
+      .map(({ cost_total, ...o }) => {
+        void cost_total;
+        return o;
+      }),
     shifts: s.shifts.filter(
       (x) => x.user_id === s.user.id && x.status === "open",
     ),
     expenses: [],
     movements: [],
     audit: [],
-    pay_rules:[],payroll_periods:[],devices:[],
+    pay_rules: [],
+    payroll_periods: [],
+    devices: [],
   };
 }
 export function receiptText(order: Order) {
   return `${order.number}\n${order.lines.map((l) => `${l.name} x${l.quantity}: ${l.price * l.quantity}`).join("\n")}\nTổng: ${order.total}`;
 }
-import {operations} from './operations';
+import { operations } from "./operations";

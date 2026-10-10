@@ -116,7 +116,7 @@ begin
   actual:=(p->>'actual_cash')::bigint;reason_value:=coalesce(trim(p->>'note'),'');
   if actual is null or actual<0 then raise exception 'Tiền thực tế không hợp lệ.'; end if;
   if actual<>expected and reason_value='' then raise exception 'Nhập lý do chênh lệch.'; end if;
-  update public.shifts set expected_cash=expected,actual_cash=actual,note=reason_value,ended_at=now(),status='submitted' where id=sh.id;
+  update public.shifts set expected_cash=expected,actual_cash=actual,note=reason_value,ended_at=now(),status='approved' where id=sh.id;
  elsif p_type='approve_shift' then
   update public.shifts set status='approved' where id=(p->>'id')::uuid and shop_id=s and status='submitted';
   if not found then raise exception 'Ca chưa được gửi duyệt.'; end if;

@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 import type { Product } from "@/lib/types";
 import { Field } from "@/components/ui";
+import { SmartMoneyInput } from "./smart-money-input";
 
 export function ProductFields({ product: p }: { product: Product | null }) {
   return (
@@ -25,10 +26,10 @@ export function ProductFields({ product: p }: { product: Product | null }) {
       </Field>
       <div className="form-grid">
         <Field label="Giá bán (₫)">
-          <input name="price" type="number" min="0" required defaultValue={p?.price} />
+          <SmartMoneyInput name="price" type="number" min="0" required defaultValue={p?.price} />
         </Field>
         <Field label="Giá vốn (₫)">
-          <input name="cost" type="number" min="0" required defaultValue={p?.cost} />
+          <SmartMoneyInput name="cost" type="number" min="0" required defaultValue={p?.cost} />
         </Field>
         <Field label={p ? "Tồn kho (điều chỉnh riêng)" : "Tồn kho ban đầu"}>
           <input name="stock" type="number" min="0" readOnly={!!p} defaultValue={p?.stock || 0} />

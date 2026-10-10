@@ -7,6 +7,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const config: NextConfig = {
 
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/pos",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
