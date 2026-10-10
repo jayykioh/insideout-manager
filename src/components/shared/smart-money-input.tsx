@@ -13,20 +13,7 @@ export function SmartMoneyInput({ value, defaultValue, onValueChange, onChange, 
   const [internalVal, setInternalVal] = useState(value ?? defaultValue ?? "");
   const [focused, setFocused] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Sync if value prop changes externally
-  useEffect(() => {
-    if (value !== undefined) {
-      setInternalVal((prev) => {
-        // Only sync from parent if we are not actively typing, 
-        // to prevent parent re-renders from overwriting our local state during debounce.
-        if (!focused && String(value) !== String(prev)) {
-          return value;
-        }
-        return prev;
-      });
-    }
-  }, [value, focused]);
+  const inputVal = !focused && value !== undefined ? value : internalVal;
 
   useEffect(() => {
     return () => {
@@ -41,9 +28,13 @@ export function SmartMoneyInput({ value, defaultValue, onValueChange, onChange, 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
     // Create a synthetic event clone if onChange needs to be called later
-    let eClone: any = null;
+    let eClone: React.ChangeEvent<HTMLInputElement> | null = null;
     if (onChange) {
-      eClone = { ...e, target: { ...e.target, value: newVal, name: props.name } };
+      eClone = {
+        ...e,
+        target: { ...e.target, value: newVal, name: props.name },
+        currentTarget: { ...e.currentTarget, value: newVal, name: props.name },
+      } as React.ChangeEvent<HTMLInputElement>;
     }
 
     timeoutRef.current = setTimeout(() => {
@@ -64,7 +55,7 @@ export function SmartMoneyInput({ value, defaultValue, onValueChange, onChange, 
     }
   };
 
-  const valNum = Number(internalVal);
+  const valNum = Number(inputVal);
   const recommendations: number[] = [];
   
   if (valNum > 0 && valNum < 10000 && Number.isInteger(valNum)) {
@@ -91,7 +82,7 @@ export function SmartMoneyInput({ value, defaultValue, onValueChange, onChange, 
     <div style={{ position: "relative", width: "100%" }} className={className} onClick={(e) => e.stopPropagation()}>
       <input
         {...props}
-        value={internalVal}
+        value={inputVal}
         onChange={handleChange}
         onFocus={(e) => {
           setFocused(true);

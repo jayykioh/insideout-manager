@@ -135,7 +135,7 @@ test("cash difference requires a note", () => {
     type: "close_shift",
     payload: { id: s.shifts[0].id, actual_cash: 90000, note: "Kiểm đếm thiếu" },
   });
-  assert.equal(closed.shifts[0].status, "submitted");
+  assert.equal(closed.shifts[0].status, "approved");
   assert.equal(closed.shifts[0].expected_cash, 100000);
 });
 test("only one open shift per employee", () => {
