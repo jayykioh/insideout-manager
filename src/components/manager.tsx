@@ -2128,22 +2128,24 @@ export default function Manager() {
             )}
             {modal === "expense" && (
               <>
-                <Field label="Số tiền (₫)">
-                  <SmartMoneyInput name="amount" type="number" min="1" required />
-                </Field>
-                <Field label="Danh mục">
-                  <select name="category">
-                    {[
-                      "Mặt bằng",
-                      "Điện nước",
-                      "Vận chuyển",
-                      "Vật tư",
-                      "Khác",
-                    ].map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
-                </Field>
+                <div className="form-grid">
+                  <Field label="Số tiền (₫)">
+                    <SmartMoneyInput name="amount" type="number" min="1" required />
+                  </Field>
+                  <Field label="Danh mục">
+                    <select name="category">
+                      {[
+                        "Mặt bằng",
+                        "Điện nước",
+                        "Vận chuyển",
+                        "Vật tư",
+                        "Khác",
+                      ].map((x) => (
+                        <option key={x}>{x}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
                 <Field label="Nội dung">
                   <input name="note" required maxLength={200} />
                 </Field>
@@ -2158,24 +2160,26 @@ export default function Manager() {
                     defaultValue={(editing as Member)?.name}
                   />
                 </Field>
-                <Field label="Lương theo giờ (₫)">
-                  <SmartMoneyInput
-                    name="hourly_rate"
-                    type="number"
-                    min="0"
-                    required
-                    defaultValue={(editing as Member)?.hourly_rate || 25000}
-                  />
-                </Field>
-                <Field label="Vai trò">
-                  <select
-                    name="role"
-                    defaultValue={(editing as Member)?.role || "staff"}
-                  >
-                    <option value="staff">Nhân viên</option>
-                    <option value="admin">Quản lý</option>
-                  </select>
-                </Field>
+                <div className="form-grid">
+                  <Field label="Lương theo giờ (₫)">
+                    <SmartMoneyInput
+                      name="hourly_rate"
+                      type="number"
+                      min="0"
+                      required
+                      defaultValue={(editing as Member)?.hourly_rate || 25000}
+                    />
+                  </Field>
+                  <Field label="Vai trò">
+                    <select
+                      name="role"
+                      defaultValue={(editing as Member)?.role || "staff"}
+                    >
+                      <option value="staff">Nhân viên</option>
+                      <option value="admin">Quản lý</option>
+                    </select>
+                  </Field>
+                </div>
                 {!editing && (
                   <>
                     <Field label="Mã PIN (4 đến 6 số)">

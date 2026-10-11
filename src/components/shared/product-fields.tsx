@@ -21,9 +21,20 @@ export function ProductFields({ product: p }: { product: Product | null }) {
           </select>
         </Field>
       </div>
-      <Field label="Biến thể">
-        <input name="variant" required placeholder="Đen / M" defaultValue={p?.variant} />
-      </Field>
+      <div className="form-grid">
+        <Field label="Biến thể">
+          <input name="variant" required placeholder="Đen / M" defaultValue={p?.variant} />
+        </Field>
+        <Field label="Dáng sản phẩm">
+          <select name="kind" defaultValue={p?.kind || "tee"}>
+            <option value="tee">Áo thun</option>
+            <option value="hoodie">Hoodie</option>
+            <option value="pants">Quần</option>
+            <option value="bag">Túi</option>
+            <option value="cap">Mũ</option>
+          </select>
+        </Field>
+      </div>
       <div className="form-grid">
         <Field label="Giá bán (₫)">
           <SmartMoneyInput name="price" type="number" min="0" required defaultValue={p?.price} />
@@ -38,15 +49,6 @@ export function ProductFields({ product: p }: { product: Product | null }) {
           <input name="color" type="color" defaultValue={p?.color || "#676b63"} />
         </Field>
       </div>
-      <Field label="Dáng sản phẩm">
-        <select name="kind" defaultValue={p?.kind || "tee"}>
-          <option value="tee">Áo thun</option>
-          <option value="hoodie">Hoodie</option>
-          <option value="pants">Quần</option>
-          <option value="bag">Túi</option>
-          <option value="cap">Mũ</option>
-        </select>
-      </Field>
     </>
   );
 }

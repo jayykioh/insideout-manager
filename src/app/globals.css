@@ -1542,11 +1542,28 @@ tbody tr:hover td:first-child {
   max-width: 448px; /* max-w-md */
   width: calc(100% - 32px);
   padding: 24px;
-  max-height: 90dvh;
-  overflow: auto;
+  max-height: min(90dvh, calc(100dvh - 32px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.03),
     0 24px 48px -12px rgba(0, 0, 0, 0.25);
+}
+.modal::-webkit-scrollbar {
+  width: 5px;
+}
+.modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+.modal::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 .modal::backdrop {
   background: rgba(0, 0, 0, 0.7);
@@ -1577,20 +1594,37 @@ tbody tr:hover td:first-child {
   }
 }
 .modal-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .modal-header h2 {
   font-size: 18px;
   font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
 }
 .modal-header .icon-button {
-  margin-right: -8px;
-  margin-top: -8px;
+  margin-right: -4px;
   color: var(--muted);
+  flex-shrink: 0;
+}
+input[type="color"] {
+  height: 42px;
+  padding: 3px 5px;
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
 }
 .payment-total {
   padding: 16px 0 28px;
@@ -3696,12 +3730,14 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
   }
 
   .modal-actions {
-    flex-direction: column;
-    gap: 12px;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
   }
 
   .modal-actions > button {
-    width: 100%;
+    flex: 1;
+    min-height: 42px;
     margin: 0;
   }
 
@@ -3934,4 +3970,108 @@ select:focus {
 }
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
+}
+
+/* Prevent background scroll when modal dialog is open */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+/* =========================================================================
+   RESPONSIVE MODAL OPTIMIZATIONS (EMIL DESIGN ENGINEERING)
+   ========================================================================= */
+@media (max-width: 640px) {
+  .modal {
+    width: calc(100% - 24px);
+    max-width: 420px;
+    padding: 12px 14px 14px;
+    border-radius: 16px;
+    max-height: min(92dvh, calc(100dvh - 20px));
+    margin: auto;
+  }
+
+  .modal-header {
+    position: sticky;
+    top: -12px;
+    margin: -12px -14px 10px -14px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    z-index: 20;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    gap: 12px;
+  }
+
+  .modal-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .modal .stack-form {
+    gap: 9px;
+  }
+
+  /* Force 2-column pairing inside modals on mobile for compact field layout */
+  .modal .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .modal .field {
+    gap: 3px;
+    margin-bottom: 0;
+  }
+
+  .modal > .field {
+    margin-bottom: 9px;
+  }
+
+  .modal .field > span,
+  .modal .form-group label {
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
+  .modal input,
+  .modal select {
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .modal input[type="color"] {
+    height: 38px;
+    padding: 2px 4px;
+  }
+
+  .modal textarea {
+    min-height: 64px;
+    max-height: 110px;
+    resize: vertical;
+    padding: 6px 10px;
+  }
+
+  .modal button.primary.full {
+    min-height: 40px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* Compact summary and details inside modals */
+  .modal .order-details-summary {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .modal .summary-row,
+  .modal .order-summary-row {
+    padding: 6px 0;
+    font-size: 13px;
+  }
 }
