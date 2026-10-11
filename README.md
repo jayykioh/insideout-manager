@@ -27,6 +27,35 @@ Every browser-accessible business table has RLS. Writes go through a transaction
 
 The service role is used only for device enrollment, profile discovery, staff provisioning and PIN session exchange. Ordinary business commands use the employee JWT.
 
+## Deploy to Cloudflare Workers
+
+This project uses the official `@opennextjs/cloudflare` adapter. The adapter requires Next.js `16.3.8` or newer in the supported 16.3 line; this project pins `16.3.8`. Wrangler builds and serves `.open-next/worker.js` with static files from `.open-next/assets`. Do not deploy `.next` directly.
+
+For local development, copy `.env.example` to `.env.local` and fill in the Supabase URL and anon key. Then create `.dev.vars` containing `NEXTJS_ENV=development` (or copy `.dev.vars.example`) so the Worker preview loads the development Next.js environment. Never commit `.env*` or `.dev.vars` files.
+
+Run the production build in the Workers runtime:
+
+```sh
+npm run preview
+```
+
+The command runs the PWA build before `next build`, adapts that output with OpenNext, and starts a local Wrangler preview. Keep `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` available to the build; they are compiled into the browser bundle and are also read by the server at runtime. `SUPABASE_SERVICE_ROLE_KEY` must only be set as a Worker secret. `DEFAULT_SHOP_ID` is optional and may be set as a Worker runtime variable.
+
+Before a CLI deployment, set the two public Supabase values in the build shell, then configure the Worker runtime values as secrets. For example, in PowerShell:
+
+```powershell
+$env:NEXT_PUBLIC_SUPABASE_URL = "https://your-project.supabase.co"
+$env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "your-anon-key"
+npx wrangler secret put NEXT_PUBLIC_SUPABASE_URL
+npx wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npm run deploy
+```
+
+Each `wrangler secret put` command prompts for its value. Configure these build variables and runtime secrets separately when using Cloudflare Workers Builds. Set optional `DEFAULT_SHOP_ID` as a Worker variable when the database contains multiple shops. The Worker is named `insideout-manager`; the configured `ASSETS` binding serves OpenNext's static output, and `WORKER_SELF_REFERENCE` is reserved for OpenNext features that call the Worker itself. No R2 cache or image binding is configured because the current app does not use ISR/revalidation or Next Image optimization.
+
+The deployment error `Unexpected loadManifest(/.next/server/preview-props.json) call!` is consistent with a Worker running unadapted Next.js output or an incompatible deployment entry point: Next's server manifest loader is not itself a Cloudflare Worker entry point. The repository had no adapter dependency or valid Wrangler entry configuration, which plausibly explains the production Error 1101. This diagnosis is not confirmed against the currently deployed artifact; verify it after deploying the OpenNext build by loading the home page, API route, and `/sw.js` from the Worker URL.
+
 ## Verification
 
 ```sh
@@ -34,6 +63,8 @@ npm test
 npm run lint
 npm run typecheck
 npm run build
+npm run build:worker
+npm run preview
 ```
 
 Tests execute the actual migration on PGlite, a PostgreSQL WASM build, with a minimal Supabase Auth test schema. They cover tenant boundaries, staff restrictions, atomic rollback, checkout replay, immutable cost capture, cancellation reversal, shift closing and PIN lockout. A live Supabase staging check is still required; the test harness does not emulate the hosted Auth service.
@@ -47,7 +78,7 @@ This is a working first implementation, not a completed production rollout of ev
 - Reports currently show revenue, sales volume, expenses and top products. Full historical profit reporting and scheduled aggregates remain to be built.
 - Product and avatar uploads, receipt hardware validation, employee attendance corrections and returns after a closed shift are not implemented.
 - Offline orders persist and retry with stable IDs. Conflicts are retained for attention. Resolving rejected orders and orders associated with closed shifts needs an admin workflow.
-- The service worker is a small native implementation, not Workbox; background retries run while the app is open. Installability on iOS and browser storage eviction recovery remain unverified.
+- The service worker uses Workbox for precaching and caching strategies; background retries run while the app is open. Installability on iOS and browser storage eviction recovery remain unverified.
 - The current snapshot endpoint returns all RLS-visible records. Pagination, virtualization, route splitting, production performance budgets and full accessibility audit remain pending.
 - The operational JSON export is not a database backup. Configure managed backups and rehearse restore before using real shop data.
 - No production deployment or hosted database mutation has been performed.
