@@ -639,133 +639,186 @@ export default function OperationsPanel({
         <section className="panel settings-form">
           <h2>Hình ảnh sản phẩm</h2>
           <AssetUpload data={data} kind="product" onReload={onReload} />
-          <h2>Lịch sử tồn kho</h2>
           <div
-            style={{ display: "flex", flexDirection: "column", marginTop: 16 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginTop: 28,
+            }}
           >
-            {data.movements.slice(0, 100).map((m, index, arr) => {
-              const isPositive = m.quantity > 0;
-              const isNegative = m.quantity < 0;
-              const productName =
-                data.products.find((p) => p.id === m.product_id)?.name ||
-                "Sản phẩm không xác định";
-              return (
-                <div
-                  key={m.id}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h2 style={{ margin: 0 }}>Lịch sử tồn kho</h2>
+              {data.movements.length > 0 && (
+                <span
+                  className="badge"
                   style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 16,
-                    padding: "16px 0",
-                    borderBottom:
-                      index < arr.length - 1
-                        ? "1px solid var(--border)"
-                        : "none",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "2px 8px",
                   }}
                 >
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      background: isPositive
-                        ? "rgba(16, 185, 129, 0.1)"
-                        : isNegative
-                          ? "rgba(239, 68, 68, 0.1)"
-                          : "var(--surface)",
-                      color: isPositive
-                        ? "#10b981"
-                        : isNegative
-                          ? "#ef4444"
-                          : "var(--muted)",
-                    }}
-                  >
-                    <ArrowRightLeft size={18} />
-                  </div>
+                  {data.movements.length} ghi nhận
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="muted small-text" style={{ margin: "4px 0 12px" }}>
+            Biến động xuất nhập kho và điều chỉnh gần đây
+          </p>
 
+          {!data.movements || data.movements.length === 0 ? (
+            <div
+              style={{
+                padding: "32px 16px",
+                textAlign: "center",
+                color: "var(--muted)",
+                fontSize: 13,
+                border: "1px dashed var(--border)",
+                borderRadius: "var(--radius-lg, 4px)",
+                marginTop: 8,
+              }}
+            >
+              Chưa có biến động tồn kho nào được ghi nhận.
+            </div>
+          ) : (
+            <div
+              className="custom-scroll"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                maxHeight: "min(520px, 62vh)",
+                overflowY: "auto",
+                overscrollBehavior: "contain",
+                paddingRight: 6,
+                marginTop: 8,
+              }}
+            >
+              {data.movements.slice(0, 100).map((m, index, arr) => {
+                const isPositive = m.quantity > 0;
+                const isNegative = m.quantity < 0;
+                const productName =
+                  data.products.find((p) => p.id === m.product_id)?.name ||
+                  "Sản phẩm không xác định";
+                return (
                   <div
+                    key={m.id}
                     style={{
-                      flex: 1,
-                      minWidth: 0,
                       display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
+                      alignItems: "flex-start",
+                      gap: 16,
+                      padding: "14px 4px",
+                      borderBottom:
+                        index < arr.length - 1
+                          ? "1px solid var(--border)"
+                          : "none",
                     }}
                   >
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        gap: 12,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 600,
-                          color: "var(--fg)",
-                          wordBreak: "break-word",
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {productName}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 700,
-                          fontVariantNumeric: "tabular-nums",
-                          flexShrink: 0,
-                          color: isPositive
-                            ? "#10b981"
-                            : isNegative
-                              ? "#ef4444"
-                              : "var(--fg)",
-                        }}
-                      >
-                        {isPositive ? "+" : ""}
-                        {m.quantity}
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        flexWrap: "wrap",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        background: isPositive
+                          ? "rgba(16, 185, 129, 0.1)"
+                          : isNegative
+                            ? "rgba(239, 68, 68, 0.1)"
+                            : "var(--surface)",
+                        color: isPositive
+                          ? "#10b981"
+                          : isNegative
+                            ? "#ef4444"
+                            : "var(--muted)",
                       }}
                     >
-                      <span
+                      <ArrowRightLeft size={18} />
+                    </div>
+
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <div
                         style={{
-                          fontSize: 13,
-                          color: "var(--fg)",
-                          opacity: 0.85,
+                          display: "flex",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: 12,
                         }}
                       >
-                        {m.reason}
-                      </span>
-                      <span
+                        <span
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 600,
+                            color: "var(--fg)",
+                            wordBreak: "break-word",
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {productName}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 700,
+                            fontVariantNumeric: "tabular-nums",
+                            flexShrink: 0,
+                            color: isPositive
+                              ? "#10b981"
+                              : isNegative
+                                ? "#ef4444"
+                                : "var(--fg)",
+                          }}
+                        >
+                          {isPositive ? "+" : ""}
+                          {m.quantity}
+                        </span>
+                      </div>
+
+                      <div
                         style={{
-                          fontSize: 12,
-                          color: "var(--muted)",
-                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
                         }}
                       >
-                        {date(m.created_at)}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--fg)",
+                            opacity: 0.85,
+                          }}
+                        >
+                          {m.reason}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "var(--muted)",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {date(m.created_at)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
       {path === "/admin/settings" && (

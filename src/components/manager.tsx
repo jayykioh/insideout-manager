@@ -1592,7 +1592,7 @@ export default function Manager() {
                     </div>
                     {data.expenses.length ? (
                       <div className="table-wrap">
-                        <table>
+                        <table className="expenses-table">
                           <thead>
                             <tr>
                               <th>Nội dung</th>

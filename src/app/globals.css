@@ -2712,11 +2712,18 @@ tbody tr:hover td:first-child {
     display: none !important;
   }
 
+  /* Ensure 3-stat grid stacks cleanly on mobile */
+  .grid-3 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
   /* Products Table specific card layout */
   table.products-table {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
   }
   table.products-table thead {
     display: none;
@@ -2725,19 +2732,19 @@ tbody tr:hover td:first-child {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
   }
   table.products-table tr {
-    display: grid;
-    grid-template-areas:
-      "product stock"
-      "sku sku"
-      "price cost"
-      "actions actions";
-    grid-template-columns: 1fr auto;
-    gap: 6px;
-    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
     margin: 0;
-    align-items: center;
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 4px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
   table.products-table td {
     display: flex;
@@ -2745,50 +2752,119 @@ tbody tr:hover td:first-child {
     padding: 0 !important;
     text-align: left !important;
     justify-content: flex-start;
+    align-items: center;
+    min-width: 0;
   }
   table.products-table td::before {
     display: none;
   }
   table.products-table td[data-label="Sản phẩm"] {
-    grid-area: product;
+    order: 1;
+    padding-right: 56px !important; /* space for stock badge */
   }
-  table.products-table td[data-label="SKU"] {
-    grid-area: sku;
-    font-size: 13px;
+  table.products-table td[data-label="Sản phẩm"] .product-cell {
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+  }
+  table.products-table td[data-label="Sản phẩm"] .product-cell strong {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+    color: var(--fg);
+  }
+  table.products-table td[data-label="Sản phẩm"] .product-cell small {
+    font-size: 12px;
+    white-space: normal;
+    color: var(--muted);
+    margin-top: 3px;
   }
   table.products-table td[data-label="Tồn kho"] {
-    grid-area: stock;
-    justify-content: flex-end;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    border: none;
+    padding: 0 !important;
+  }
+  table.products-table td[data-label="SKU"] {
+    order: 2;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: -4px;
+  }
+  table.products-table td[data-label="SKU"]::before {
+    display: inline;
+    content: "SKU: ";
+    font-weight: 500;
+    color: var(--muted);
+    margin-right: 4px;
   }
   table.products-table td[data-label="Giá bán"] {
-    grid-area: price;
-    font-weight: 600;
+    order: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px !important;
+    margin-top: 2px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--fg);
   }
   table.products-table td[data-label="Giá bán"]::before {
     display: inline-block;
-    content: "Giá bán:";
-    margin-right: 6px;
+    content: "Giá bán";
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
   }
   table.products-table td[data-label="Giá vốn"] {
-    grid-area: cost;
-    justify-content: flex-end;
+    order: 4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+    padding-bottom: 4px !important;
   }
   table.products-table td[data-label="Giá vốn"]::before {
     display: inline-block;
-    content: "Giá vốn:";
-    margin-right: 6px;
+    content: "Giá vốn";
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
   }
   table.products-table td[data-label="Thao tác"] {
-    grid-area: actions;
-    justify-content: flex-start;
-    margin-top: 8px;
-    border-top: 1px dashed var(--border);
-    padding-top: 12px !important;
+    order: 5;
+    border-top: 1px solid var(--border);
+    padding-top: 10px !important;
+    margin-top: 2px;
+    width: 100%;
   }
   table.products-table td[data-label="Thao tác"] .row-actions {
     display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  table.products-table td[data-label="Thao tác"] .row-actions button {
+    flex: 1;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 6px 10px;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg);
+    transition: background 120ms var(--ease-out), transform 120ms var(--ease-out);
+  }
+  table.products-table td[data-label="Thao tác"] .row-actions button:active {
+    transform: scale(0.97);
   }
 
   /* Shift Table specific card layout */
@@ -2796,6 +2872,7 @@ tbody tr:hover td:first-child {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
   }
   table.shift-table thead {
     display: none;
@@ -2804,19 +2881,19 @@ tbody tr:hover td:first-child {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
   }
   table.shift-table tr {
-    display: grid;
-    grid-template-areas:
-      "staff staff"
-      "start end"
-      "expected actual"
-      "diff status";
-    grid-template-columns: 1fr auto;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
-    padding: 16px;
+    padding: 14px;
     margin: 0;
-    align-items: center;
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 4px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
   table.shift-table td {
     display: flex;
@@ -2824,64 +2901,197 @@ tbody tr:hover td:first-child {
     padding: 0 !important;
     text-align: left !important;
     justify-content: flex-start;
+    align-items: center;
+    min-width: 0;
   }
   table.shift-table td::before {
     display: none;
   }
   table.shift-table td[data-label="Nhân viên"] {
-    grid-area: staff;
-    font-size: 1.1em;
+    order: 1;
+    font-size: 14px;
     font-weight: 600;
+    padding-right: 90px !important; /* space for status badge */
+  }
+  table.shift-table td[data-label="Trạng thái"] {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    border: none;
+    padding: 0 !important;
   }
   table.shift-table td[data-label="Bắt đầu"] {
-    grid-area: start;
-    font-size: 13px;
+    order: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px !important;
+    margin-top: 2px;
+    font-size: 12.5px;
     color: var(--muted);
   }
   table.shift-table td[data-label="Bắt đầu"]::before {
     display: inline-block;
-    content: "Bắt đầu:";
-    margin-right: 6px;
+    content: "Bắt đầu";
+    color: var(--muted);
+    font-size: 12px;
   }
   table.shift-table td[data-label="Kết thúc"] {
-    grid-area: end;
-    font-size: 13px;
+    order: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
     color: var(--muted);
-    justify-content: flex-end;
   }
   table.shift-table td[data-label="Kết thúc"]::before {
     display: inline-block;
-    content: "Kết thúc:";
-    margin-right: 6px;
+    content: "Kết thúc";
+    color: var(--muted);
+    font-size: 12px;
   }
   table.shift-table td[data-label="Dự kiến"] {
-    grid-area: expected;
+    order: 4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 8px !important;
+    margin-top: 2px;
+    font-size: 13.5px;
+    color: var(--fg);
   }
   table.shift-table td[data-label="Dự kiến"]::before {
     display: inline-block;
-    content: "Dự kiến:";
-    margin-right: 6px;
+    content: "Tiền dự kiến";
+    color: var(--muted);
+    font-size: 12px;
   }
   table.shift-table td[data-label="Thực tế"] {
-    grid-area: actual;
-    justify-content: flex-end;
+    order: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13.5px;
+    color: var(--fg);
   }
   table.shift-table td[data-label="Thực tế"]::before {
     display: inline-block;
-    content: "Thực tế:";
-    margin-right: 6px;
+    content: "Tiền thực tế";
+    color: var(--muted);
+    font-size: 12px;
   }
   table.shift-table td[data-label="Chênh lệch"] {
-    grid-area: diff;
+    order: 6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--fg);
   }
   table.shift-table td[data-label="Chênh lệch"]::before {
     display: inline-block;
-    content: "Lệch:";
-    margin-right: 6px;
+    content: "Chênh lệch";
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
   }
-  table.shift-table td[data-label="Trạng thái"] {
-    grid-area: status;
-    justify-content: flex-end;
+
+  /* Expenses Table specific card layout */
+  table.expenses-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  table.expenses-table thead {
+    display: none;
+  }
+  table.expenses-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  table.expenses-table tr {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 4px);
+    margin: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  table.expenses-table td {
+    display: flex;
+    border: none;
+    padding: 0 !important;
+    min-width: 0;
+  }
+  table.expenses-table td::before {
+    display: none;
+  }
+  table.expenses-table td[data-label="Nội dung"] {
+    order: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+    line-height: 1.35;
+    word-break: break-word;
+    margin-bottom: 2px;
+  }
+  table.expenses-table td[data-label="Danh mục"] {
+    order: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--border);
+    padding-top: 6px !important;
+  }
+  table.expenses-table td[data-label="Danh mục"]::before {
+    display: inline-block;
+    content: "Danh mục";
+    color: var(--muted);
+    font-size: 12px;
+  }
+  table.expenses-table td[data-label="Thời gian"] {
+    order: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  table.expenses-table td[data-label="Thời gian"]::before {
+    display: inline-block;
+    content: "Thời gian";
+    color: var(--muted);
+    font-size: 12px;
+  }
+  table.expenses-table td[data-label="Số tiền"] {
+    order: 4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--danger, #ef4444);
+    border-top: 1px solid var(--border);
+    padding-top: 6px !important;
+    margin-top: 2px;
+  }
+  table.expenses-table td[data-label="Số tiền"]::before {
+    display: inline-block;
+    content: "Số tiền";
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12.5px;
   }
 
   /* Inventory Table specific card layout */
@@ -3509,29 +3719,29 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
     padding: 12px 16px;
   }
 
-  /* Transform tables into cards on very small screens */
+  /* Transform tables into cards on very small screens (generic tables only) */
   @media (max-width: 500px) {
-    table,
-    thead,
-    tbody,
-    th,
-    td,
-    tr {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table),
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) thead,
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) tbody,
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) th,
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) td,
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) tr {
       display: block;
     }
-    thead tr {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) thead tr {
       position: absolute;
       top: -9999px;
       left: -9999px;
     }
-    tr {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) tr {
       border: 1px solid var(--border);
       margin-bottom: 12px;
       border-radius: var(--radius-lg);
       background: var(--surface);
       padding: 8px;
     }
-    td {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) td {
       border: none;
       border-bottom: 1px solid var(--border-soft);
       position: relative;
@@ -3539,10 +3749,10 @@ td, th, .money, .stat strong, .summary-row span:last-child, .total-row strong:la
       text-align: right;
       min-height: 40px;
     }
-    td:last-child {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) td:last-child {
       border-bottom: 0;
     }
-    td:before {
+    table:not(.products-table):not(.shift-table):not(.expenses-table):not(.inventory-table):not(.payroll-table) td:before {
       position: absolute;
       top: 12px;
       left: 12px;
@@ -3705,4 +3915,23 @@ select:focus {
   .hide-on-mobile {
     display: none !important;
   }
+}
+
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
