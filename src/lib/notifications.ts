@@ -38,7 +38,6 @@ async function subscribeToPush(shopId: string) {
     let sub = await reg.pushManager.getSubscription();
     // Force unsubscribe old subscriptions to ensure the new VAPID key is used
     if (sub) {
-      const currentKey = sub.options.applicationServerKey;
       // We check if it exists; if we want to be safe, we just unsubscribe and subscribe again once
       await sub.unsubscribe();
     }

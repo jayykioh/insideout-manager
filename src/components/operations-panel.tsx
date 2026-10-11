@@ -9,7 +9,6 @@ import {
   Check,
   RefreshCw,
   UserPlus,
-  Package,
   ArrowRightLeft,
 } from "lucide-react";
 import type { Snapshot, Command, PayrollLine } from "@/lib/types";
